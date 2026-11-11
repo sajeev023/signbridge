@@ -1,0 +1,26 @@
+{
+  "name": "signbridge",
+  "version": "1.0.0",
+  "description": "AI-Powered Indian Sign Language Recognition, Translation & Voice Communication System",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "start:backend": "cd backend && .venv\\Scripts\\python.exe run.py",
+    "test:backend": "cd backend && .venv\\Scripts\\python.exe -m pytest tests/",
+    "train:model": "cd backend && .venv\\Scripts\\python.exe train.py",
+    "evaluate:model": "cd backend && .venv\\Scripts\\python.exe evaluate.py"
+  },
+  "keywords": [
+    "indian-sign-language",
+    "isl",
+    "computer-vision",
+    "pytorch",
+    "mediapipe",
+    "assistive-technology",
+    "accessibility",
+    "speech-synthesis"
+  ],
+  "author": "SIGNBRIDGE Engineering Team",
+  "license": "MIT"
+}
