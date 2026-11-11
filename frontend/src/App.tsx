@@ -112,7 +112,7 @@ export function App() {
             </div>
             <div>
               <span className="font-semibold text-slate-200">SIGNBRIDGE</span>
-              <span className="text-slate-500 ml-2">v2.0.0 • Ultra Legendary Edition</span>
+              <span className="text-slate-500 ml-2">v2.1.0 • Release Candidate</span>
             </div>
           </div>
 
@@ -133,9 +133,9 @@ export function App() {
             >
               Research & Metrics
             </button>
-            <span className="flex items-center gap-1 text-slate-400">
+            <span className="flex items-center gap-1 text-slate-400" title="Webcam in RAM; uploads purged immediately post-inference">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>100% Local Inference</span>
+              <span>Zero Data Retention</span>
             </span>
             <a
               href="https://github.com/sajeev023/signbridge"
