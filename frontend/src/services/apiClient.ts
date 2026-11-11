@@ -1,4 +1,12 @@
-import { ISLSign, PredictionResult, PracticeEvaluation, ModelMetadata, TranslationRecord } from '../types';
+import { 
+  ISLSign, 
+  PredictionResult, 
+  PracticeEvaluation, 
+  ModelMetadata, 
+  TranslationRecord,
+  ResearchMetrics,
+  RecognitionMode 
+} from '../types';
 
 export const FALLBACK_VOCABULARY: ISLSign[] = [
   {
@@ -153,18 +161,31 @@ export const FALLBACK_VOCABULARY: ISLSign[] = [
   }
 ];
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
-const WS_BASE_URL = 'ws://127.0.0.1:8000';
-const HISTORY_STORAGE_KEY = 'signbridge_translation_history_v1';
+// Determine API Base URL dynamically: in production same-origin, in dev port 8000
+const API_BASE_URL = typeof window !== 'undefined' && window.location.port === '5173'
+  ? 'http://127.0.0.1:8000'
+  : '';
+
+const WS_BASE_URL = typeof window !== 'undefined' && window.location.port === '5173'
+  ? 'ws://127.0.0.1:8000'
+  : (typeof window !== 'undefined' ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}` : 'ws://127.0.0.1:8000');
+
+const HISTORY_STORAGE_KEY = 'signbridge_translation_history_v2';
 
 export const apiClient = {
-  async getHealth(): Promise<{ status: string; model_loaded: boolean; device: string }> {
+  async getHealth(): Promise<{ status: string; version: string; model_loaded: boolean; device: string; features?: any }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/health`, { signal: AbortSignal.timeout(2500) });
+      const res = await fetch(`${API_BASE_URL}/api/health`, { signal: AbortSignal.timeout(3000) });
       if (!res.ok) throw new Error('Health check non-200');
       return await res.json();
     } catch {
-      return { status: 'offline', model_loaded: false, device: 'client-fallback' };
+      return { 
+        status: 'offline', 
+        version: '2.0.0', 
+        model_loaded: false, 
+        device: 'client-fallback',
+        features: { video_upload: true, live_camera: false, demo_mode: true }
+      };
     }
   },
 
@@ -193,6 +214,18 @@ export const apiClient = {
     return null;
   },
 
+  async getResearchMetrics(): Promise<ResearchMetrics | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/research/metrics`, { signal: AbortSignal.timeout(3500) });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // Fallback
+    }
+    return null;
+  },
+
   async predictFrame(payload: {
     left_hand?: any[];
     right_hand?: any[];
@@ -204,6 +237,39 @@ export const apiClient = {
       body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('Frame prediction failed');
+    return await res.json();
+  },
+
+  async predictVideo(file: File): Promise<PredictionResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${API_BASE_URL}/api/predict/video`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Video upload recognition failed' }));
+      throw new Error(err.detail || `Upload failed with status ${res.status}`);
+    }
+    return await res.json();
+  },
+
+  async practiceVideo(file: File, targetSign: string): Promise<PracticeEvaluation> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('target_sign', targetSign);
+
+    const res = await fetch(`${API_BASE_URL}/api/practice/video`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Practice video evaluation failed' }));
+      throw new Error(err.detail || `Evaluation failed with status ${res.status}`);
+    }
     return await res.json();
   },
 
@@ -275,8 +341,14 @@ export const apiClient = {
       id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       timestamp: Date.now()
     };
-    // Keep max 100 recent entries
     const updated = [newRecord, ...current].slice(0, 100);
+    this.saveHistory(updated);
+    return updated;
+  },
+
+  deleteHistoryRecord(id: string): TranslationRecord[] {
+    const current = this.getHistory();
+    const updated = current.filter((r) => r.id !== id);
     this.saveHistory(updated);
     return updated;
   },

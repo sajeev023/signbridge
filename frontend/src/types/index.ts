@@ -1,4 +1,5 @@
 export type SupportedLanguage = 'en' | 'hi' | 'te';
+export type RecognitionMode = 'video_upload' | 'live_camera' | 'demonstration';
 
 export interface Translations {
   en: string;
@@ -26,9 +27,19 @@ export interface Landmark3D {
 
 export type PredictionStatus = 'idle' | 'buffering' | 'evaluating' | 'recognized' | 'uncertain' | 'error';
 
+export interface VideoMetadata {
+  total_frames: number;
+  fps: number;
+  duration_seconds: number;
+  width: number;
+  height: number;
+  sampled_frames: number;
+}
+
 export interface PredictionResult {
   status: PredictionStatus;
   is_stable?: boolean;
+  is_confident?: boolean;
   sign_id?: string;
   label?: string;
   category?: string;
@@ -38,11 +49,15 @@ export interface PredictionResult {
   message?: string;
   threshold?: number;
   latency_ms?: number;
+  processing_duration_ms?: number;
   timestamp?: number;
   attention_weights?: number[];
   all_probabilities?: Record<string, number>;
   buffer_fill?: number;
   buffer_count?: number;
+  video_metadata?: VideoMetadata;
+  model_version?: string;
+  input_mode?: RecognitionMode;
 }
 
 export interface TranslationRecord {
@@ -55,6 +70,7 @@ export interface TranslationRecord {
   confidence: number;
   timestamp: number;
   spoken: boolean;
+  recognition_mode: RecognitionMode;
 }
 
 export interface PracticeEvaluation {
@@ -68,6 +84,37 @@ export interface PracticeEvaluation {
   canonical_movement: string;
   difficulty: string;
   live_prediction?: PredictionResult;
+  video_metadata?: VideoMetadata;
+}
+
+export interface ResearchMetrics {
+  timestamp: string;
+  hardware: string;
+  test_samples: number;
+  overall_accuracy: number;
+  macro_precision: number;
+  macro_recall: number;
+  macro_f1: number;
+  latency_ms: {
+    mean: number;
+    p95: number;
+    min: number;
+    max: number;
+  };
+  per_class: Array<{
+    class_id: string;
+    precision: number;
+    recall: number;
+    f1: number;
+    support: number;
+  }>;
+  confusion_matrix: number[][];
+  validation_status: {
+    synthetic_benchmark: string;
+    real_world_validation: string;
+    confidence_threshold: number;
+    model_version: string;
+  };
 }
 
 export interface ModelMetadata {

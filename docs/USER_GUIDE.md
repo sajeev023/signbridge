@@ -1,63 +1,74 @@
-# SIGNBRIDGE User Guide & Exhibition Walkthrough
+# SIGNBRIDGE 2.0 User Guide & Exhibition Manual
 
-## 1. Introduction
-
-SIGNBRIDGE is designed for intuitive accessibility. This guide explains how to use each feature of the system and provides a recommended walkthrough for demonstrations at science and engineering exhibitions.
+Welcome to SIGNBRIDGE 2.0. This guide walks you through using each component of the platform for demonstrations, classroom practice, and assistive communication.
 
 ---
 
-## 2. Navigating the Application
+## 1. Operating Modes in Translator Workspace
 
-The top navigation bar provides instant access to all core modules:
-- **Overview**: System introduction, problem statement, and key performance metrics.
-- **Live Translator**: Real-time webcam translation into text and speech.
-- **History**: Local session log of recognized signs with voice replay.
-- **ISL Vocabulary**: Comprehensive library of 10 supported signs with movement details.
-- **Practice Studio**: Interactive training mode with biomechanical form feedback.
-- **Technical Spec**: Layer-by-layer neural architecture and benchmark graphs.
-- **About**: Social charter, team roles, and ethical commitments.
+Open **Live Translator** (`/translator`) from the top navigation bar.
 
----
+### Mode A: Video Upload (No Webcam Required)
+1. Select the **Upload Video** tab.
+2. Drag and drop any recorded video clip of an Indian Sign Language gesture (MP4, WebM, MOV, or AVI up to 50MB), or click **Select File**.
+3. Click **Run AI Recognition**.
+4. The system decodes the video, extracts landmarks, runs the BiLSTM classifier, displays the recognized sign, and speaks the translation in your chosen language.
+5. The temporary video file is deleted immediately after processing.
 
-## 3. Live Translator Walkthrough
+### Mode B: Live Camera (For Devices with Webcams)
+1. Select the **Live Camera** tab.
+2. Click **Start Webcam** and grant camera permissions when prompted.
+3. Stand 1–2 meters from the camera ensuring your chest, shoulders, and both hands are clearly visible in the video frame.
+4. Execute an authentic ISL gesture steadily over ~1 second.
+5. The real-time skeletal overlay tracks your motion, and confident predictions trigger localized voice output.
+6. If no camera is detected, a notice will appear with 1-click shortcuts to Video Upload or Demonstration mode.
 
-1. Navigate to **Live Translator**.
-2. Click **Start Webcam**. When prompted by the browser, click "Allow" to grant camera access.
-3. Stand or sit facing the camera so your upper chest and both hands are clearly visible.
-4. Perform any of the 10 supported ISL gestures (e.g. *Namaste*, *Help*, *Thank You*, *Water*).
-5. Watch the real-time canvas overlay track your joints with blue and green skeletal connections.
-6. As you complete the 30-frame gesture, the translation card immediately updates with:
-   - Primary translation text in your selected language (English, Hindi, or Telugu).
-   - Multi-lingual secondary translations.
-   - Neural confidence percentage.
-   - Attention weight sparkline showing the peak climax frame of your gesture.
-7. If sound is enabled and "Auto-speak" is on, the computer will automatically speak the translation out loud!
-
-### Exhibition Demo Tip: Quick Test Stream Selector
-If you are presenting at an exhibition booth where a signer is not in front of the camera, or you wish to verify all 10 signs rapidly for the judges:
-- Look at the **Exhibition Demo Stream Selector** box below the camera.
-- Click any sign button (e.g. `Help`, `Doctor`, `Emergency`).
-- The system will immediately stream the canonical 3D kinematic trajectory into the AI model, demonstrating live 100% accurate classification, attention weights, and regional voice synthesis in real time!
+### Mode C: Demonstration Mode (For Booths & Exhibitions)
+1. Select the **Demo Mode** tab.
+2. Choose any sign from the vocabulary roster (e.g., `Namaste`, `Help`, `Doctor`, `Water`).
+3. Click **Start Simulation**.
+4. The system renders canonical biomechanical motion arcs on the canvas with an explicit `DEMONSTRATION MODE` watermark, illustrating how the AI translates the gesture.
 
 ---
 
-## 4. Using Practice Studio
+## 2. Multi-Lingual Speech Output
 
-1. Navigate to **Practice Studio**.
-2. Select a sign from the list on the left (e.g., `Namaste`).
-3. Read the canonical kinematic movement instructions.
-4. Click **Start Practice Attempt**.
-5. Execute the motion in front of the camera or observe the guided template.
-6. The engine evaluates:
-   - Whether the correct hand configuration was used (one hand vs two hands).
-   - Joint distance and spatial alignment.
-   - Trajectory velocity.
-7. Receive an instant numerical accuracy score (e.g. 95%), a qualitative grade (*Excellent*, *Good Progress*), and actionable tips to refine your form!
+Use the top toolbar to switch between speech output languages:
+- **EN**: English (`en-IN`)
+- **HI**: Hindi (`hi-IN`)
+- **TE**: Telugu (`te-IN`)
+- **Mute / Unmute**: Toggle audio playback at any time using the speaker icon.
 
 ---
 
-## 5. Audio Settings & Multi-Lingual Speech
+## 3. Interactive Practice Studio
 
-- **Language Toggle**: Use the `EN` / `HI` / `TE` buttons in the top navbar or voice panel to switch speech output between English, Hindi, and Telugu.
-- **Mute / Unmute**: Click the speaker icon to silence audio during quiet testing.
-- **Replay**: Click the "Play Voice" button on any translation card to repeat the spoken audio.
+Open **Practice Studio** (`/learning`) to practice signing form:
+1. Select a target sign from the left sidebar.
+2. Review the canonical instructions, movement path, and single/two-handed requirements.
+3. Choose your practice method:
+   - **Interactive Trajectory**: Click to view real-time feedback against synthetic target form.
+   - **Upload Attempt Video**: Click **Upload Attempt Video** to evaluate a recorded video of your signing.
+4. Receive a similarity score (0–100%), qualitative grade (`Excellent`, `Good`, `Needs Improvement`), and kinematic feedback.
+
+---
+
+## 4. Research & Model Performance Dashboard
+
+Open **Research & Metrics** (`/research`) to explore the scientific foundations:
+- **Live Model KPIs**: Real-time parameter count (796,426), CPU inference latency (2.07 ms), and threshold floor ($\tau = 0.75$).
+- **Synthetic vs. Real-World Targets**: Transparent comparison of in-silico benchmarks vs. unconstrained clinical expectations.
+- **Class Performance Table**: Per-sign precision, recall, and F1 scores.
+- **Confusion Matrix**: Quantitative visualization across all 10 vocabulary classes.
+
+---
+
+## 5. Translation History & Privacy Controls
+
+Open **History** (`/history`) to review past translations:
+- Each item displays the translated text, regional language, confidence percentage, timestamp, and input mode badge (`Upload`, `Camera`, `Demo`).
+- **Hear Voice**: Click the speaker icon to replay the translation audio.
+- **Copy Text**: Click the copy icon to copy the text to your clipboard.
+- **Delete Single Item**: Click the trash icon next to any individual record.
+- **Export JSON**: Download your full session log for offline documentation.
+- **Clear All**: Purge all local history with one click.

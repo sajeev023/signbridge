@@ -1,0 +1,18 @@
+services:
+  signbridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: signbridge:2.0.0
+    container_name: signbridge-app
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - ENVIRONMENT=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

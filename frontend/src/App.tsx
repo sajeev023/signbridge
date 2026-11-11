@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './pages/LandingPage';
-import { LiveTranslatorPage } from './pages/LiveTranslatorPage';
+import { TranslatorWorkspace } from './pages/TranslatorWorkspace';
 import { HistoryPage } from './pages/HistoryPage';
 import { VocabularyPage } from './pages/VocabularyPage';
 import { LearningPage } from './pages/LearningPage';
+import { ResearchDashboardPage } from './pages/ResearchDashboardPage';
 import { TechnicalPage } from './pages/TechnicalPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { AboutPage } from './pages/AboutPage';
 import { SupportedLanguage } from './types';
 import { apiClient } from './services/apiClient';
@@ -60,7 +62,7 @@ export function App() {
           <LandingPage onNavigate={setCurrentPage} />
         )}
         {currentPage === 'translator' && (
-          <LiveTranslatorPage
+          <TranslatorWorkspace
             selectedLanguage={selectedLanguage}
             onLanguageChange={setSelectedLanguage}
             isMuted={isMuted}
@@ -87,8 +89,14 @@ export function App() {
             isMuted={isMuted}
           />
         )}
+        {currentPage === 'research' && (
+          <ResearchDashboardPage />
+        )}
         {currentPage === 'technical' && (
           <TechnicalPage />
+        )}
+        {currentPage === 'privacy' && (
+          <PrivacyPage />
         )}
         {currentPage === 'about' && (
           <AboutPage />
@@ -104,7 +112,7 @@ export function App() {
             </div>
             <div>
               <span className="font-semibold text-slate-200">SIGNBRIDGE</span>
-              <span className="text-slate-500 ml-2">v1.0.0 • Exhibition Release</span>
+              <span className="text-slate-500 ml-2">v2.0.0 • Ultra Legendary Edition</span>
             </div>
           </div>
 
@@ -113,6 +121,18 @@ export function App() {
           </p>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setCurrentPage('privacy')}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              Privacy Charter
+            </button>
+            <button
+              onClick={() => setCurrentPage('research')}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              Research & Metrics
+            </button>
             <span className="flex items-center gap-1 text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>100% Local Inference</span>
