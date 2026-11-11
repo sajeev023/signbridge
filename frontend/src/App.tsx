@@ -57,7 +57,7 @@ export function App() {
       />
 
       {/* Main Page Content */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 lg:pb-8">
         {currentPage === 'landing' && (
           <LandingPage onNavigate={setCurrentPage} />
         )}
@@ -104,7 +104,7 @@ export function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-navy-850 bg-navy-950/90 py-8 px-4 sm:px-6 lg:px-8 text-xs text-slate-400">
+      <footer className="border-t border-navy-850 bg-navy-950/90 py-8 px-4 sm:px-6 lg:px-8 text-xs text-slate-400 mb-16 lg:mb-0">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 rounded-lg bg-brand-600 flex items-center justify-center font-bold text-white text-[10px]">
@@ -112,7 +112,7 @@ export function App() {
             </div>
             <div>
               <span className="font-semibold text-slate-200">SIGNBRIDGE</span>
-              <span className="text-slate-500 ml-2">v2.1.0 • Release Candidate</span>
+              <span className="text-slate-500 ml-2">v2.1.0 • Ultra Mobile Edition</span>
             </div>
           </div>
 
@@ -133,7 +133,7 @@ export function App() {
             >
               Research & Metrics
             </button>
-            <span className="flex items-center gap-1 text-slate-400" title="Webcam in RAM; uploads purged immediately post-inference">
+            <span className="flex items-center gap-1 text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>Zero Data Retention</span>
             </span>
@@ -144,7 +144,7 @@ export function App() {
               className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
             >
               <GitBranch className="w-3.5 h-3.5" />
-              <span>GitHub Repo</span>
+              <span>GitHub</span>
             </a>
           </div>
         </div>

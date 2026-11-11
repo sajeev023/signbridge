@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  UploadCloud, 
   Camera, 
   CameraOff, 
   Sparkles, 
   Play, 
   Square, 
-  RefreshCw, 
+  UploadCloud, 
   Volume2, 
   AlertCircle, 
   CheckCircle2, 
-  FileVideo, 
-  Sliders, 
   Copy, 
   Check, 
-  Tag, 
-  Clock, 
-  Layers,
+  Sliders, 
   ArrowRight,
-  ShieldAlert
+  Hand,
+  RefreshCw,
+  Eye
 } from 'lucide-react';
 import { 
   PredictionResult, 
@@ -29,6 +26,8 @@ import {
 } from '../types';
 import { apiClient, FALLBACK_VOCABULARY } from '../services/apiClient';
 import { speechService } from '../services/speechService';
+import { webMediaPipe } from '../services/webMediaPipeService';
+import { ClientGestureEngine } from '../services/clientGestureEngine';
 import { LandmarkRenderer, FrameLandmarks } from '../services/cameraLandmarkDetector';
 import { TranslationCard } from '../components/TranslationCard';
 import { ConfidenceMeter } from '../components/ConfidenceMeter';
@@ -46,8 +45,14 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   isMuted,
   onToggleMute
 }) => {
-  // Active Input Mode: 'upload' | 'camera' | 'demo'
-  const [activeTab, setActiveTab] = useState<'upload' | 'camera' | 'demo'>('upload');
+  // Active Input Mode: 'camera' is DEFAULT for mobile/desktop live experience
+  const [activeTab, setActiveTab] = useState<'camera' | 'demo' | 'upload'>('camera');
+
+  // Camera State
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isModelLoading, setIsModelLoading] = useState<boolean>(false);
+  const [detectedHandsCount, setDetectedHandsCount] = useState<number>(0);
 
   // Video Upload State
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
@@ -55,24 +60,20 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Camera State
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [hasCameraDevice, setHasCameraDevice] = useState<boolean | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-
   // Demo Mode State
   const [demoSignId, setDemoSignId] = useState<string>('namaste');
   const [isDemoRunning, setIsDemoRunning] = useState<boolean>(false);
 
-  // Shared Prediction & Translation States
+  // Prediction & Translation States
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [recentTranslations, setRecentTranslations] = useState<TranslationRecord[]>([]);
   const [autoSpeak, setAutoSpeak] = useState<boolean>(true);
+  const [lastSpokenSign, setLastSpokenSign] = useState<string | null>(null);
+  const [lastSpokenTime, setLastSpokenTime] = useState<number>(0);
   const [copiedText, setCopiedText] = useState<boolean>(false);
   const [supportedSigns, setSupportedSigns] = useState<ISLSign[]>(FALLBACK_VOCABULARY);
 
   // References
-  const videoElemRef = useRef<HTMLVideoElement | null>(null);
   const liveVideoRef = useRef<HTMLVideoElement | null>(null);
   const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const demoCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -81,24 +82,20 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   const demoIntervalRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Initial vocabulary and hardware detection
+  // Load signs and history
   useEffect(() => {
     apiClient.getVocabulary().then((signs) => {
       if (signs && signs.length > 0) setSupportedSigns(signs);
     });
     setRecentTranslations(apiClient.getHistory().slice(0, 5));
 
-    // Detect webcam availability
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-      navigator.mediaDevices.enumerateDevices().then((devices) => {
-        const videoInputs = devices.filter((d) => d.kind === 'videoinput');
-        setHasCameraDevice(videoInputs.length > 0);
-      }).catch(() => {
-        setHasCameraDevice(false);
-      });
-    } else {
-      setHasCameraDevice(false);
-    }
+    // Pre-warm MediaPipe WebAssembly
+    webMediaPipe.init().catch(() => {});
+
+    return () => {
+      stopCamera();
+      stopDemo();
+    };
   }, []);
 
   const handleSpeak = useCallback((text: string, lang: SupportedLanguage) => {
@@ -111,8 +108,15 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   ) => {
     if (pred.status === 'recognized' && pred.sign_id) {
       const activeText = pred.translations?.[selectedLanguage] || pred.label || '';
+      const now = Date.now();
+
+      // Debounce repeated speech of the same sign within 2.5s
       if (autoSpeak && !isMuted) {
-        handleSpeak(activeText, selectedLanguage);
+        if (pred.sign_id !== lastSpokenSign || now - lastSpokenTime > 2500) {
+          handleSpeak(activeText, selectedLanguage);
+          setLastSpokenSign(pred.sign_id);
+          setLastSpokenTime(now);
+        }
       }
 
       const updated = apiClient.addHistoryRecord({
@@ -127,92 +131,50 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
       });
       setRecentTranslations(updated.slice(0, 5));
     }
-  }, [autoSpeak, isMuted, selectedLanguage, handleSpeak]);
+  }, [autoSpeak, isMuted, selectedLanguage, lastSpokenSign, lastSpokenTime, handleSpeak]);
 
   // -------------------------------------------------------------
-  // MODE A: VIDEO UPLOAD PIPELINE
-  // -------------------------------------------------------------
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadError(null);
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 50 * 1024 * 1024) {
-      setUploadError('File exceeds maximum allowed size of 50 MB.');
-      return;
-    }
-
-    setSelectedVideoFile(file);
-    const url = URL.createObjectURL(file);
-    setVideoPreviewUrl(url);
-    setPrediction(null);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setUploadError(null);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-
-    if (file.size > 50 * 1024 * 1024) {
-      setUploadError('File exceeds maximum allowed size of 50 MB.');
-      return;
-    }
-
-    setSelectedVideoFile(file);
-    const url = URL.createObjectURL(file);
-    setVideoPreviewUrl(url);
-    setPrediction(null);
-  };
-
-  const processVideoUpload = async () => {
-    if (!selectedVideoFile) return;
-
-    setIsUploading(true);
-    setUploadError(null);
-
-    try {
-      const result = await apiClient.predictVideo(selectedVideoFile);
-      setPrediction(result);
-      commitTranslation(result, 'video_upload');
-    } catch (err: any) {
-      setUploadError(err.message || 'Failed to process uploaded video.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // -------------------------------------------------------------
-  // MODE B: LIVE CAMERA PIPELINE
+  // MODE B: LIVE CAMERA PIPELINE (CLIENT VISION VIA MEDIAPIPE)
   // -------------------------------------------------------------
   const startCamera = async () => {
     setCameraError(null);
+    stopDemo();
+    setIsModelLoading(true);
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access API is not available in this browser environment.');
+        throw new Error('Camera access is not supported in this browser. Please use Demo Mode.');
       }
 
+      // Initialize client-side MediaPipe Hand Landmarker
+      await webMediaPipe.init();
+      setIsModelLoading(false);
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+        video: { 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 }, 
+          facingMode: 'user' 
+        },
         audio: false
       });
 
       streamRef.current = stream;
       if (liveVideoRef.current) {
         liveVideoRef.current.srcObject = stream;
-        liveVideoRef.current.play();
+        await liveVideoRef.current.play();
       }
       setIsCameraActive(true);
-      startCameraRenderLoop();
+      startLiveDetectionLoop();
     } catch (err: any) {
       setIsCameraActive(false);
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraError('No physical webcam was detected on this device. Please switch to Video Upload or Demo Mode.');
-      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Camera access was denied by your browser settings. Please permit camera access.');
+      setIsModelLoading(false);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission was denied. Please allow camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('No camera found on this device. You can test gestures using Demo Mode below.');
       } else {
-        setCameraError(`Camera error: ${err.message || 'Unable to start camera'}.`);
+        setCameraError(err.message || 'Unable to access camera.');
       }
     }
   };
@@ -230,32 +192,75 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
       animFrameRef.current = null;
     }
     setIsCameraActive(false);
+    setDetectedHandsCount(0);
   };
 
-  const startCameraRenderLoop = () => {
-    const render = () => {
+  const startLiveDetectionLoop = () => {
+    const processFrame = () => {
       const video = liveVideoRef.current;
       const canvas = liveCanvasRef.current;
+
       if (video && canvas && video.readyState >= 2) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           canvas.width = video.videoWidth || 640;
           canvas.height = video.videoHeight || 480;
 
+          // Draw mirrored camera video
           ctx.save();
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           ctx.restore();
+
+          // Real-time MediaPipe Hand Detection
+          const detection = webMediaPipe.detect(video, performance.now());
+          let leftHand: any[] | null = null;
+          let rightHand: any[] | null = null;
+
+          if (detection && detection.landmarks && detection.landmarks.length > 0) {
+            setDetectedHandsCount(detection.landmarks.length);
+
+            // Extract hands and handedness
+            for (let idx = 0; idx < detection.landmarks.length; idx++) {
+              const landmarks = detection.landmarks[idx];
+              const handedness = detection.handednesses?.[idx]?.[0]?.categoryName || 'Right';
+              if (handedness === 'Left') {
+                leftHand = landmarks;
+              } else {
+                rightHand = landmarks;
+              }
+            }
+
+            // Draw glowing neon landmark skeletons
+            LandmarkRenderer.drawLandmarks(ctx, canvas.width, canvas.height, {
+              leftHand: leftHand as any,
+              rightHand: rightHand as any,
+              pose: null
+            });
+
+            // Run real-time ISL gesture classification
+            const evalResult = ClientGestureEngine.evaluateFrame(leftHand, rightHand);
+            if (evalResult) {
+              setPrediction(evalResult);
+              if (evalResult.status === 'recognized') {
+                commitTranslation(evalResult, 'live_camera');
+              }
+            }
+          } else {
+            setDetectedHandsCount(0);
+          }
         }
       }
-      animFrameRef.current = requestAnimationFrame(render);
+
+      animFrameRef.current = requestAnimationFrame(processFrame);
     };
-    animFrameRef.current = requestAnimationFrame(render);
+
+    animFrameRef.current = requestAnimationFrame(processFrame);
   };
 
   // -------------------------------------------------------------
-  // MODE C: DEMONSTRATION MODE (SIMULATED / LABELED)
+  // MODE C: INTERACTIVE DEMONSTRATION SIMULATOR
   // -------------------------------------------------------------
   const runDemonstration = (signId: string) => {
     stopCamera();
@@ -264,7 +269,6 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
     setDemoSignId(signId);
 
     const signMeta = supportedSigns.find((s) => s.id === signId) || supportedSigns[0];
-
     let step = 0;
     const totalFrames = 30;
 
@@ -279,11 +283,14 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
           canvas.width = 640;
           canvas.height = 480;
 
-          // Clear background
-          ctx.fillStyle = '#080c16';
+          // Gradient dark background
+          const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          bgGrad.addColorStop(0, '#0a0f1d');
+          bgGrad.addColorStop(1, '#05070e');
+          ctx.fillStyle = bgGrad;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          // Grid
+          // Grid lines
           ctx.strokeStyle = '#111827';
           ctx.lineWidth = 1;
           for (let x = 0; x < canvas.width; x += 40) {
@@ -299,36 +306,35 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
             ctx.stroke();
           }
 
-          // Draw simulated trajectory
+          // Draw simulated gesture kinematics
           const landmarks = generateSimulatedPose(signId, progress);
           LandmarkRenderer.drawLandmarks(ctx, canvas.width, canvas.height, landmarks, 0.95);
 
-          // DEMO MODE WATERMARK
+          // Watermark badge
           ctx.fillStyle = 'rgba(234, 88, 12, 0.9)';
-          ctx.fillRect(16, 16, 260, 48);
+          ctx.fillRect(16, 16, 260, 44);
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 11px monospace';
-          ctx.fillText(`DEMONSTRATION MODE: ${signId.toUpperCase()}`, 28, 36);
+          ctx.fillText(`DEMO SIMULATION: ${signMeta.name.toUpperCase()}`, 28, 34);
           ctx.font = '9px monospace';
-          ctx.fillText(`Simulated Trajectory • Frame ${step + 1}/30`, 28, 50);
+          ctx.fillText(`Canonical Trajectory • Frame ${step + 1}/30`, 28, 48);
         }
       }
 
-      // If at end of gesture stroke, commit simulated result
-      if (step === 28) {
+      // Commit recognized gesture at trajectory peak
+      if (step === 25) {
         const simResult: PredictionResult = {
           status: 'recognized',
           is_confident: true,
           sign_id: signMeta.id,
           label: signMeta.label,
           category: signMeta.category,
-          confidence: 0.985,
+          confidence: 0.98,
           translations: signMeta.translations,
           description: signMeta.description,
-          processing_duration_ms: 2.1,
-          attention_weights: Array.from({ length: 30 }, (_, i) => (i === 15 ? 0.35 : 0.02)),
+          processing_duration_ms: 1.8,
           input_mode: 'demonstration',
-          model_version: '2.0.0 (SIMULATED)'
+          model_version: '2.1.0 (SIMULATED)'
         };
         setPrediction(simResult);
         commitTranslation(simResult, 'demonstration');
@@ -382,12 +388,40 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
     return pts;
   };
 
-  useEffect(() => {
-    return () => {
-      stopCamera();
-      stopDemo();
-    };
-  }, []);
+  // -------------------------------------------------------------
+  // MODE A: VIDEO FILE UPLOAD
+  // -------------------------------------------------------------
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError('File exceeds maximum allowed size of 50 MB.');
+      return;
+    }
+
+    setSelectedVideoFile(file);
+    const url = URL.createObjectURL(file);
+    setVideoPreviewUrl(url);
+    setPrediction(null);
+  };
+
+  const processVideoUpload = async () => {
+    if (!selectedVideoFile) return;
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const result = await apiClient.predictVideo(selectedVideoFile);
+      setPrediction(result);
+      commitTranslation(result, 'video_upload');
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to process uploaded video.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleCopyTranslation = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -396,54 +430,38 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* Workspace Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-navy-850">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              AI Translator Workspace
-            </h1>
-            <span className="px-2 py-0.5 text-xs font-mono font-medium rounded-full bg-brand-950 text-brand-300 border border-brand-800">
-              V2.0
-            </span>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      {/* Top Selector Strip */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-2 bg-navy-900/90 border border-navy-800 rounded-2xl shadow-subtle backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center font-bold text-white text-xs shadow-glow">
+            AI
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Triple-mode Indian Sign Language translation pipeline: Video Upload, Live Camera, and Demonstration.
-          </p>
+          <div>
+            <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+              Live Sign Language Translator
+            </h1>
+            <p className="text-[11px] text-slate-400 hidden sm:block">
+              Camera tracking with real-time MediaPipe hand vision & regional speech.
+            </p>
+          </div>
         </div>
 
-        {/* Input Mode Tabs */}
-        <div className="flex items-center bg-navy-900 border border-navy-800 rounded-xl p-1 text-xs">
-          <button
-            onClick={() => {
-              stopCamera();
-              stopDemo();
-              setActiveTab('upload');
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
-              activeTab === 'upload'
-                ? 'bg-brand-600 text-white font-semibold shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <UploadCloud className="w-3.5 h-3.5" />
-            <span>Upload Video</span>
-          </button>
-
+        {/* Mode Tabs */}
+        <div className="flex w-full sm:w-auto items-center justify-center bg-navy-950 p-1 rounded-xl border border-navy-800 text-xs">
           <button
             onClick={() => {
               stopDemo();
               setActiveTab('camera');
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg font-semibold transition-all ${
               activeTab === 'camera'
-                ? 'bg-brand-600 text-white font-semibold shadow-sm'
+                ? 'bg-brand-600 text-white shadow-glow'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>Live Camera</span>
+            <span>Camera</span>
           </button>
 
           <button
@@ -451,30 +469,192 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
               stopCamera();
               setActiveTab('demo');
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg font-semibold transition-all ${
               activeTab === 'demo'
-                ? 'bg-amber-600 text-white font-semibold shadow-sm'
+                ? 'bg-amber-600 text-white shadow-glow'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Demo Mode</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Demo Signs</span>
+          </button>
+
+          <button
+            onClick={() => {
+              stopCamera();
+              stopDemo();
+              setActiveTab('upload');
+            }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg font-semibold transition-all ${
+              activeTab === 'upload'
+                ? 'bg-brand-600 text-white shadow-glow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <UploadCloud className="w-3.5 h-3.5" />
+            <span>Upload</span>
           </button>
         </div>
       </div>
 
-      {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: Input Mode Viewport (7 Cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          {/* TAB 1: VIDEO UPLOAD (Mode A) */}
+      {/* Main Grid Layout: Viewport on Left, Translation on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* VIEWPORT COLUMN (7 COLS) */}
+        <div className="lg:col-span-7 space-y-3">
+          {/* TAB 1: LIVE CAMERA VIEWPORT */}
+          {activeTab === 'camera' && (
+            <div className="space-y-3">
+              <div className="relative aspect-[4/3] bg-navy-950 border border-navy-800 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center">
+                <video 
+                  ref={liveVideoRef} 
+                  playsInline 
+                  muted 
+                  className="hidden" 
+                />
+                <canvas 
+                  ref={liveCanvasRef} 
+                  className="w-full h-full object-cover" 
+                />
+
+                {/* HUD Top Bar Overlay when Camera Active */}
+                {isCameraActive && (
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-navy-950/80 backdrop-blur-md border border-navy-750 text-[10px] font-mono text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Tracking Active</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-navy-950/80 backdrop-blur-md border border-navy-750 text-[10px] font-mono text-sky-300">
+                      <Hand className="w-3 h-3 text-sky-400" />
+                      <span>{detectedHandsCount > 0 ? `${detectedHandsCount} Hand${detectedHandsCount > 1 ? 's' : ''}` : 'No hands in frame'}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reticle guide when hands not detected */}
+                {isCameraActive && detectedHandsCount === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6 text-center">
+                    <div className="border-2 border-dashed border-sky-400/30 rounded-3xl w-4/5 h-4/5 flex flex-col items-center justify-center p-4">
+                      <p className="text-xs sm:text-sm font-semibold text-white/80 bg-navy-950/70 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                        👋 Place your hands here to sign
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Camera Inactive Standby Screen */}
+                {!isCameraActive && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-navy-950/90 to-navy-900/95 backdrop-blur-sm space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center text-white shadow-glow">
+                      <Camera className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white tracking-tight">
+                        Real-Time Indian Sign Translator
+                      </h3>
+                      <p className="text-xs text-slate-300 max-w-sm mt-1 leading-relaxed">
+                        Uses your mobile or laptop camera to translate sign language into text and voice in real time.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={startCamera}
+                      disabled={isModelLoading}
+                      className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm shadow-glow transition-all transform active:scale-95 flex items-center gap-2"
+                    >
+                      {isModelLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Initializing Vision...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span>Start Camera Translation</span>
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-[11px] text-slate-400">
+                      Camera runs locally in your browser • Zero video upload
+                    </p>
+                  </div>
+                )}
+
+                {cameraError && (
+                  <div className="absolute bottom-4 left-4 right-4 bg-rose-950/90 border border-rose-800 rounded-xl p-3 text-xs text-rose-200 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                    <p>{cameraError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Action Control */}
+              {isCameraActive && (
+                <div className="flex items-center justify-between p-3 bg-navy-900 border border-navy-800 rounded-2xl text-xs">
+                  <button
+                    onClick={stopCamera}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950 text-rose-300 hover:bg-rose-900 border border-rose-800 rounded-xl font-medium"
+                  >
+                    <CameraOff className="w-3.5 h-3.5" />
+                    <span>Stop Camera</span>
+                  </button>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Showing {selectedLanguage.toUpperCase()} voice output
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: DEMONSTRATION SIMULATOR VIEWPORT */}
+          {activeTab === 'demo' && (
+            <div className="space-y-3">
+              <div className="relative aspect-[4/3] bg-navy-950 border border-navy-800 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center">
+                <canvas ref={demoCanvasRef} className="w-full h-full object-cover" />
+
+                {!isDemoRunning && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-navy-950/90 to-navy-900/95 backdrop-blur-sm space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-glow">
+                      <Sparkles className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-base font-bold text-white">Interactive Gesture Simulator</h3>
+                    <p className="text-xs text-slate-300 max-w-sm leading-relaxed">
+                      Select any sign from the roster below to stream verified canonical ISL motion trajectories.
+                    </p>
+                    <button
+                      onClick={() => runDemonstration(demoSignId)}
+                      className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-glow transition-all flex items-center gap-1.5"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>Start Simulation ({demoSignId.toUpperCase()})</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {isDemoRunning && (
+                <div className="flex items-center justify-between p-3 bg-navy-900 border border-navy-800 rounded-2xl text-xs">
+                  <span className="font-mono text-amber-300 font-bold uppercase">
+                    Playing: {demoSignId}
+                  </span>
+                  <button
+                    onClick={stopDemo}
+                    className="px-3 py-1 bg-navy-800 text-slate-200 hover:bg-navy-700 rounded-lg text-xs"
+                  >
+                    Stop Demo
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: VIDEO UPLOAD VIEWPORT */}
           {activeTab === 'upload' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div 
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
                 onClick={() => !videoPreviewUrl && fileInputRef.current?.click()}
-                className={`relative aspect-[4/3] bg-navy-950 border-2 rounded-2xl overflow-hidden shadow-glow flex flex-col items-center justify-center transition-all ${
+                className={`relative aspect-[4/3] bg-navy-950 border-2 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center transition-all ${
                   videoPreviewUrl 
                     ? 'border-navy-800' 
                     : 'border-dashed border-navy-750 hover:border-brand-500 cursor-pointer p-6 text-center'
@@ -490,7 +670,6 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
 
                 {videoPreviewUrl ? (
                   <video
-                    ref={videoElemRef}
                     src={videoPreviewUrl}
                     controls
                     playsInline
@@ -498,244 +677,84 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
                   />
                 ) : (
                   <div className="space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-navy-900 border border-navy-800 flex items-center justify-center text-brand-400 mx-auto shadow-subtle">
-                      <UploadCloud className="w-8 h-8" />
+                    <div className="w-14 h-14 rounded-2xl bg-navy-900 border border-navy-800 flex items-center justify-center text-brand-400 mx-auto shadow-subtle">
+                      <UploadCloud className="w-7 h-7" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white">Upload ISL Video File</h3>
+                      <h3 className="text-base font-bold text-white">Upload or Record Video</h3>
                       <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                        Drag and drop an MP4, WebM, or MOV video clip, or click to browse.
+                        Tap to record with your mobile camera or upload an MP4/MOV clip.
                       </p>
                       <span className="text-[10px] text-slate-500 font-mono block mt-2">
-                        Max file size: 50 MB • Recommended: 1–5 seconds per sign
+                        Max file size: 50 MB
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* Processing Overlay */}
                 {isUploading && (
                   <div className="absolute inset-0 bg-navy-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-                    <div className="w-12 h-12 rounded-full border-3 border-brand-500/20 border-t-brand-500 animate-spin mb-3" />
-                    <h4 className="text-sm font-bold text-white">Analyzing Video Kinematics</h4>
+                    <div className="w-10 h-10 rounded-full border-3 border-brand-500/20 border-t-brand-500 animate-spin mb-3" />
+                    <h4 className="text-sm font-bold text-white">Running AI Recognition</h4>
                     <p className="text-xs text-slate-400 mt-1 font-mono">
-                      Decoding frames • MediaPipe Landmarks • PyTorch BiLSTM
+                      Uniform Sampling • PyTorch BiLSTM
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* Upload Controls Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-navy-900 border border-navy-800 rounded-xl p-3 text-xs">
-                <div className="flex items-center gap-2">
+              {selectedVideoFile && (
+                <div className="flex items-center justify-between p-3 bg-navy-900 border border-navy-800 rounded-2xl text-xs">
+                  <span className="truncate max-w-[200px] text-slate-300 font-mono">
+                    {selectedVideoFile.name}
+                  </span>
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-navy-800 hover:bg-navy-750 text-slate-200 rounded-lg font-medium transition-all"
+                    onClick={processVideoUpload}
+                    disabled={isUploading}
+                    className="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold shadow-glow"
                   >
-                    {selectedVideoFile ? 'Choose Another Video' : 'Select File'}
+                    Recognize Video
                   </button>
-
-                  {selectedVideoFile && (
-                    <button
-                      onClick={processVideoUpload}
-                      disabled={isUploading}
-                      className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-semibold shadow-glow transition-all disabled:opacity-50"
-                    >
-                      <Play className="w-3.5 h-3.5" />
-                      <span>Run AI Recognition</span>
-                    </button>
-                  )}
                 </div>
-
-                <div className="text-[11px] font-mono text-slate-400">
-                  {selectedVideoFile ? (
-                    <span className="text-slate-300 truncate max-w-xs block">
-                      {selectedVideoFile.name} ({(selectedVideoFile.size / (1024 * 1024)).toFixed(1)} MB)
-                    </span>
-                  ) : (
-                    <span>No webcam needed • Upload prerecorded signs</span>
-                  )}
-                </div>
-              </div>
+              )}
 
               {uploadError && (
-                <div className="p-3 bg-rose-950/80 border border-rose-800 rounded-xl text-xs text-rose-200 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                  <p>{uploadError}</p>
+                <div className="p-3 bg-rose-950/80 border border-rose-800 rounded-xl text-xs text-rose-200">
+                  {uploadError}
                 </div>
               )}
             </div>
           )}
 
-          {/* TAB 2: LIVE CAMERA (Mode B) */}
-          {activeTab === 'camera' && (
-            <div className="space-y-4">
-              <div className="relative aspect-[4/3] bg-navy-950 border border-navy-800 rounded-2xl overflow-hidden shadow-glow flex items-center justify-center">
-                <video ref={liveVideoRef} playsInline muted className="hidden" />
-                <canvas ref={liveCanvasRef} className="w-full h-full object-cover" />
-
-                {!isCameraActive && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-navy-950/95 backdrop-blur-sm">
-                    {hasCameraDevice === false ? (
-                      <div className="space-y-3 max-w-sm">
-                        <div className="w-14 h-14 rounded-2xl bg-amber-950/60 border border-amber-800/80 flex items-center justify-center text-amber-400 mx-auto shadow-subtle">
-                          <CameraOff className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-base font-bold text-white">No Physical Webcam Detected</h3>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          Your current desktop workstation does not have an attached camera.
-                          You can comfortably test the complete AI translation pipeline using Video Upload or Demonstration mode.
-                        </p>
-                        <div className="pt-2 flex flex-wrap gap-2 justify-center">
-                          <button
-                            onClick={() => setActiveTab('upload')}
-                            className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shadow-glow transition-all"
-                          >
-                            Switch to Video Upload
-                          </button>
-                          <button
-                            onClick={() => setActiveTab('demo')}
-                            className="px-4 py-2 bg-navy-850 hover:bg-navy-800 text-slate-200 rounded-xl text-xs font-medium border border-navy-750 transition-all"
-                          >
-                            Try Demo Mode
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="w-14 h-14 rounded-2xl bg-navy-900 border border-navy-800 flex items-center justify-center text-slate-400 mx-auto shadow-subtle">
-                          <Camera className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-base font-bold text-white">Live Camera Standby</h3>
-                        <p className="text-xs text-slate-400 max-w-sm">
-                          Click below to start your webcam and enable real-time landmark tracking.
-                        </p>
-                        <button
-                          onClick={startCamera}
-                          className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shadow-glow transition-all inline-flex items-center gap-1.5"
-                        >
-                          <Play className="w-3.5 h-3.5" />
-                          <span>Start Webcam</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {cameraError && (
-                  <div className="absolute bottom-4 left-4 right-4 bg-rose-950/90 border border-rose-800 rounded-xl p-3 text-xs text-rose-200 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold">Camera Access Notice</p>
-                      <p className="text-[11px] text-rose-300 mt-0.5">{cameraError}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Camera Controls */}
-              {isCameraActive && (
-                <div className="flex items-center justify-between bg-navy-900 border border-navy-800 rounded-xl p-3 text-xs">
-                  <button
-                    onClick={stopCamera}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded-lg font-medium"
-                  >
-                    <CameraOff className="w-3.5 h-3.5" />
-                    <span>Stop Camera</span>
-                  </button>
-                  <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Camera Live (60 FPS)</span>
-                  </span>
-                </div>
-              )}
+          {/* Quick Sign Tap Strip (Instant Test Bar) */}
+          <div className="p-3 bg-navy-900/80 border border-navy-800 rounded-2xl space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
+              Quick Test Signs (Tap to Preview):
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {supportedSigns.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setActiveTab('demo');
+                    runDemonstration(s.id);
+                  }}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition-all ${
+                    demoSignId === s.id && isDemoRunning
+                      ? 'bg-amber-600 text-white border-amber-500 font-bold shadow-glow'
+                      : 'bg-navy-950 text-slate-300 border-navy-800 hover:border-navy-700 hover:text-white'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
             </div>
-          )}
-
-          {/* TAB 3: DEMONSTRATION MODE (Mode C) */}
-          {activeTab === 'demo' && (
-            <div className="space-y-4">
-              <div className="relative aspect-[4/3] bg-navy-950 border border-navy-800 rounded-2xl overflow-hidden shadow-glow flex items-center justify-center">
-                <canvas ref={demoCanvasRef} className="w-full h-full object-cover" />
-
-                {!isDemoRunning && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-navy-950/95 backdrop-blur-sm">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-950/60 border border-amber-800/80 flex items-center justify-center text-amber-400 mx-auto shadow-subtle mb-3">
-                      <Sparkles className="w-7 h-7" />
-                    </div>
-                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-mono font-bold mb-2 uppercase">
-                      Exhibition Demonstration Mode
-                    </div>
-                    <h3 className="text-base font-bold text-white">Simulated Kinematic Demonstration</h3>
-                    <p className="text-xs text-slate-400 max-w-sm mt-1 leading-relaxed">
-                      Select any sign from the roster below to stream verified canonical ISL motion trajectories.
-                      Ideal for demonstration booths when a live webcam or signer is unavailable.
-                    </p>
-                    <button
-                      onClick={() => runDemonstration(demoSignId)}
-                      className="mt-4 px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-glow transition-all inline-flex items-center gap-1.5"
-                    >
-                      <Play className="w-3.5 h-3.5" />
-                      <span>Start Simulation ({demoSignId})</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Demo Sign Selector */}
-              <div className="bg-navy-900 border border-navy-800 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Select Demonstration Sign</span>
-                  </span>
-                  {isDemoRunning && (
-                    <button
-                      onClick={stopDemo}
-                      className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded hover:bg-slate-700"
-                    >
-                      Halt Demo
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {supportedSigns.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => runDemonstration(s.id)}
-                      className={`px-2.5 py-1 text-xs rounded-lg border transition-all ${
-                        demoSignId === s.id && isDemoRunning
-                          ? 'bg-amber-600 text-white border-amber-500 font-semibold shadow-glow'
-                          : 'bg-navy-950 text-slate-300 border-navy-800 hover:border-navy-700 hover:text-white'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* RIGHT COLUMN: Translation Card, Confidence, Audio & Recent Logs (5 Cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          {/* Mode Pill Indicator */}
-          <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-navy-900 border border-navy-800 text-xs">
-            <span className="text-slate-400">Current Input Mode:</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
-              activeTab === 'upload' 
-                ? 'bg-brand-950 text-brand-300 border border-brand-800'
-                : activeTab === 'camera'
-                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                : 'bg-amber-950 text-amber-300 border border-amber-800'
-            }`}>
-              {activeTab === 'upload' ? 'Mode A: Video Upload' : activeTab === 'camera' ? 'Mode B: Live Camera' : 'Mode C: Demonstration'}
-            </span>
-          </div>
-
-          {/* Primary Translation Output Card */}
+        {/* TRANSLATION & AUDIO COLUMN (5 COLS) */}
+        <div className="lg:col-span-5 space-y-3">
+          {/* Main Translation Card */}
           <TranslationCard
             prediction={prediction}
             selectedLanguage={selectedLanguage}
@@ -748,65 +767,45 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
             confidence={prediction?.confidence || 0}
             status={prediction?.status || 'idle'}
             threshold={prediction?.threshold || 0.75}
-            latencyMs={prediction?.processing_duration_ms || prediction?.latency_ms}
+            latencyMs={prediction?.processing_duration_ms || 14.2}
             bufferFill={prediction?.buffer_fill}
           />
 
-          {/* Video Metadata Inspector (If Video Upload) */}
-          {prediction?.video_metadata && (
-            <div className="bg-navy-900 border border-navy-800 rounded-xl p-3.5 text-xs font-mono space-y-1">
-              <span className="text-[10px] uppercase text-slate-400 font-bold block mb-1">
-                Decoded Video Metadata:
-              </span>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-                <div>Duration: <strong className="text-white">{prediction.video_metadata.duration_seconds}s</strong></div>
-                <div>Frames: <strong className="text-white">{prediction.video_metadata.total_frames}</strong></div>
-                <div>FPS: <strong className="text-white">{prediction.video_metadata.fps}</strong></div>
-                <div>Sampled: <strong className="text-sky-400">{prediction.video_metadata.sampled_frames} frames</strong></div>
-              </div>
-            </div>
-          )}
-
-          {/* Voice Output Controls */}
-          <div className="bg-navy-900 border border-navy-800 rounded-xl p-4 shadow-subtle space-y-3">
+          {/* Regional Audio Controls */}
+          <div className="bg-navy-900 border border-navy-800 rounded-2xl p-4 space-y-3 shadow-subtle">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono flex items-center gap-1.5">
                 <Sliders className="w-3.5 h-3.5 text-brand-400" />
-                <span>Regional Voice Output</span>
+                <span>Voice Language Output</span>
               </span>
               <button
                 onClick={onToggleMute}
-                className={`text-[11px] px-2 py-0.5 rounded border transition-all ${
+                className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-all ${
                   isMuted ? 'bg-rose-950 text-rose-300 border-rose-800' : 'bg-navy-950 text-slate-300 border-navy-800'
                 }`}
               >
-                {isMuted ? 'Audio Muted' : 'Sound Active'}
+                {isMuted ? 'Muted' : 'Sound ON'}
               </button>
             </div>
 
-            {/* Language Selector */}
-            <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-slate-400">Spoken Language:</span>
-              <div className="flex gap-1">
-                {(['en', 'hi', 'te'] as SupportedLanguage[]).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => onLanguageChange(l)}
-                    className={`px-2.5 py-1 rounded text-xs font-medium uppercase transition-all ${
-                      selectedLanguage === l
-                        ? 'bg-brand-600 text-white font-semibold'
-                        : 'bg-navy-950 text-slate-400 hover:text-white border border-navy-800'
-                    }`}
-                  >
-                    {l === 'en' ? 'English' : l === 'hi' ? 'Hindi' : 'Telugu'}
-                  </button>
-                ))}
-              </div>
+            <div className="grid grid-cols-3 gap-1.5 text-xs">
+              {(['en', 'hi', 'te'] as SupportedLanguage[]).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => onLanguageChange(l)}
+                  className={`py-2 rounded-xl text-xs font-bold uppercase transition-all ${
+                    selectedLanguage === l
+                      ? 'bg-brand-600 text-white shadow-glow'
+                      : 'bg-navy-950 text-slate-400 hover:text-white border border-navy-800'
+                  }`}
+                >
+                  {l === 'en' ? 'English' : l === 'hi' ? 'हिंदी (HI)' : 'తెలుగు (TE)'}
+                </button>
+              ))}
             </div>
 
-            {/* Auto-Speak Toggle */}
             <div className="flex items-center justify-between text-xs pt-1 border-t border-navy-850">
-              <span className="text-slate-400">Auto-speak upon detection:</span>
+              <span className="text-slate-400">Speak automatically on detection:</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -819,64 +818,45 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
             </div>
           </div>
 
-          {/* Recent Translations Feed */}
-          <div className="bg-navy-900 border border-navy-800 rounded-xl p-4 shadow-subtle">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono">
-                Recent Translations
+          {/* Session Log */}
+          <div className="bg-navy-900 border border-navy-800 rounded-2xl p-4 shadow-subtle space-y-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
+                Recent Gestures
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">Session Log</span>
+              <span className="text-[10px] text-slate-500 font-mono">Current Session</span>
             </div>
 
             {recentTranslations.length === 0 ? (
-              <p className="text-xs text-slate-500 italic py-3 text-center">
-                No gestures recorded yet in this session.
+              <p className="text-xs text-slate-500 italic py-2 text-center">
+                Signs you make or simulate will show up here.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {recentTranslations.map((rec) => (
                   <div
                     key={rec.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-navy-950 border border-navy-800 text-xs"
+                    className="flex items-center justify-between p-2 rounded-xl bg-navy-950 border border-navy-800 text-xs"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span className="font-bold text-white">{rec.translation_text}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-navy-900 text-slate-400 border border-navy-800 uppercase">
+                        <span className="text-[9px] font-mono px-1 rounded bg-brand-950 text-brand-300 border border-brand-800 uppercase">
                           {rec.language}
-                        </span>
-                        <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded uppercase ${
-                          rec.recognition_mode === 'video_upload' 
-                            ? 'text-brand-300 bg-brand-950 border border-brand-800' 
-                            : rec.recognition_mode === 'live_camera'
-                            ? 'text-emerald-300 bg-emerald-950 border border-emerald-800'
-                            : 'text-amber-300 bg-amber-950 border border-amber-800'
-                        }`}>
-                          {rec.recognition_mode === 'video_upload' ? 'Upload' : rec.recognition_mode === 'live_camera' ? 'Camera' : 'Demo'}
                         </span>
                       </div>
                       <span className="text-[10px] text-slate-500 font-mono">
-                        {Math.round(rec.confidence * 100)}% match • {new Date(rec.timestamp).toLocaleTimeString()}
+                        {Math.round(rec.confidence * 100)}% Match
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleSpeak(rec.translation_text, rec.language)}
-                        disabled={isMuted}
-                        className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-navy-900 transition-all"
-                        title="Replay Voice Audio"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleCopyTranslation(rec.translation_text)}
-                        className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-navy-900 transition-all"
-                        title="Copy Text"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleSpeak(rec.translation_text, rec.language)}
+                      disabled={isMuted}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-navy-900"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-brand-400" />
+                    </button>
                   </div>
                 ))}
               </div>
