@@ -94,7 +94,8 @@ export const LiveTranslatorPage: React.FC<LiveTranslatorPageProps> = ({
           translation_text: activeText,
           language: selectedLanguage,
           confidence: prediction.confidence || 0.9,
-          spoken: autoSpeak && !isMuted
+          spoken: autoSpeak && !isMuted,
+          recognition_mode: 'live_camera'
         });
         setRecentTranslations(updated.slice(0, 5));
       }

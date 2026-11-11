@@ -39,6 +39,11 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
     }
   };
 
+  const handleDeleteItem = (id: string) => {
+    const updated = apiClient.deleteHistoryRecord(id);
+    setRecords(updated);
+  };
+
   const handleExportJSON = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(records, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -158,6 +163,17 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-navy-950 border border-navy-800">
                     {rec.category}
                   </span>
+                  {rec.recognition_mode && (
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase ${
+                      rec.recognition_mode === 'video_upload'
+                        ? 'text-brand-300 bg-brand-950 border border-brand-800'
+                        : rec.recognition_mode === 'live_camera'
+                        ? 'text-emerald-300 bg-emerald-950 border border-emerald-800'
+                        : 'text-amber-300 bg-amber-950 border border-amber-800'
+                    }`}>
+                      {rec.recognition_mode === 'video_upload' ? 'Upload' : rec.recognition_mode === 'live_camera' ? 'Camera' : 'Demo'}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
@@ -193,6 +209,14 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
                   ) : (
                     <Copy className="w-4 h-4" />
                   )}
+                </button>
+
+                <button
+                  onClick={() => handleDeleteItem(rec.id)}
+                  className="p-2 rounded-lg bg-navy-950 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-navy-800 hover:border-rose-800 transition-all"
+                  title="Delete this record"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

@@ -10,7 +10,8 @@ import {
   RefreshCw,
   Trophy,
   ChevronRight,
-  Hand
+  Hand,
+  UploadCloud
 } from 'lucide-react';
 import { ISLSign, PracticeEvaluation, SupportedLanguage } from '../types';
 import { apiClient, FALLBACK_VOCABULARY } from '../services/apiClient';
@@ -32,9 +33,29 @@ export const LearningPage: React.FC<LearningPageProps> = ({
   const [targetSignId, setTargetSignId] = useState<string>(initialSignId);
   const [isPracticing, setIsPracticing] = useState<boolean>(false);
   const [practiceResult, setPracticeResult] = useState<PracticeEvaluation | null>(null);
+  const [isEvaluatingVideo, setIsEvaluatingVideo] = useState<boolean>(false);
+  const [videoPracticeError, setVideoPracticeError] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animIntervalRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleUploadPracticeVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVideoPracticeError(null);
+    setIsEvaluatingVideo(true);
+    stopPractice();
+
+    try {
+      const evalData = await apiClient.practiceVideo(file, targetSignId);
+      setPracticeResult(evalData);
+    } catch (err: any) {
+      setVideoPracticeError(err.message || 'Failed to analyze practice video.');
+    } finally {
+      setIsEvaluatingVideo(false);
+    }
+  };
 
   useEffect(() => {
     apiClient.getVocabulary().then((res) => {
@@ -296,7 +317,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({
           </div>
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between bg-navy-900 border border-navy-800 p-3 rounded-xl text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-navy-900 border border-navy-800 p-3 rounded-xl text-xs">
             <div className="flex items-center gap-2">
               {isPracticing ? (
                 <button
@@ -312,15 +333,38 @@ export const LearningPage: React.FC<LearningPageProps> = ({
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium shadow-sm"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  <span>Begin Analysis</span>
+                  <span>Interactive Trajectory</span>
                 </button>
               )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                onChange={handleUploadPracticeVideo}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isEvaluatingVideo}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-800 hover:bg-navy-750 text-slate-200 rounded-lg font-medium transition-all"
+              >
+                <UploadCloud className="w-3.5 h-3.5 text-brand-400" />
+                <span>{isEvaluatingVideo ? 'Scoring Video...' : 'Upload Attempt Video'}</span>
+              </button>
             </div>
 
             <div className="text-[11px] font-mono text-slate-400">
               Target: <strong className="text-purple-300">{activeSign.name}</strong>
             </div>
           </div>
+
+          {videoPracticeError && (
+            <div className="p-3 bg-rose-950/80 border border-rose-800 rounded-xl text-xs text-rose-200 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+              <p>{videoPracticeError}</p>
+            </div>
+          )}
 
           {/* Granular Feedback Report */}
           {practiceResult && (

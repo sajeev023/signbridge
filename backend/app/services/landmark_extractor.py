@@ -1,12 +1,18 @@
+import os
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 import cv2
-from typing import Dict, List, Optional, Tuple, Any
 
 class LandmarkExtractor:
     """
     Extracts and normalizes hand and upper-body pose landmarks.
     Ensures scale and translation invariance so recognition remains reliable
     regardless of user distance or position relative to the camera.
+    
+    Supports:
+    1. Direct landmark dictionary normalization (from browser client MediaPipe stream)
+    2. Real-time video frame decoding via MediaPipe Tasks Vision (HandLandmarker & PoseLandmarker)
     """
     def __init__(self):
         self.num_left_hand = 21
@@ -15,23 +21,57 @@ class LandmarkExtractor:
         self.coords_per_point = 3
         self.total_features = (self.num_left_hand + self.num_right_hand + self.num_pose) * self.coords_per_point  # 153
 
-        # MediaPipe Holistic pose landmark indices of interest:
+        # MediaPipe pose landmark indices:
         # 0: nose, 11: left_shoulder, 12: right_shoulder, 13: left_elbow, 14: right_elbow,
         # 15: left_wrist, 16: right_wrist, 23: left_hip, 24: right_hip
         self.pose_indices = [0, 11, 12, 13, 14, 15, 16, 23, 24]
 
-        # Lazy initialized MediaPipe Holistic for server-side frame processing
-        self._mp_holistic = None
+        # Model asset paths for server-side video processing
+        self._tasks_dir = Path(__file__).resolve().parent.parent / "models" / "tasks"
+        self._hand_model_path = self._tasks_dir / "hand_landmarker.task"
+        self._pose_model_path = self._tasks_dir / "pose_landmarker.task"
 
-    def _get_mp_holistic(self):
-        if self._mp_holistic is None:
-            import mediapipe as mp
-            self._mp_holistic = mp.solutions.holistic.Holistic(
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5,
-                model_complexity=1
-            )
-        return self._mp_holistic
+        self._hand_detector = None
+        self._pose_detector = None
+
+    def _ensure_models_loaded(self):
+        if self._hand_detector is not None and self._pose_detector is not None:
+            return
+
+        import mediapipe as mp
+        from mediapipe.tasks.python import vision, BaseOptions
+
+        if not self._hand_model_path.exists() or not self._pose_model_path.exists():
+            # Lazy download if missing
+            self._tasks_dir.mkdir(parents=True, exist_ok=True)
+            import urllib.request
+            if not self._hand_model_path.exists():
+                urllib.request.urlretrieve(
+                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                    str(self._hand_model_path)
+                )
+            if not self._pose_model_path.exists():
+                urllib.request.urlretrieve(
+                    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                    str(self._pose_model_path)
+                )
+
+        hand_options = vision.HandLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=str(self._hand_model_path)),
+            num_hands=2,
+            min_hand_detection_confidence=0.35,
+            min_hand_presence_confidence=0.35,
+            min_tracking_confidence=0.35
+        )
+        self._hand_detector = vision.HandLandmarker.create_from_options(hand_options)
+
+        pose_options = vision.PoseLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=str(self._pose_model_path)),
+            min_pose_detection_confidence=0.35,
+            min_pose_presence_confidence=0.35,
+            min_tracking_confidence=0.35
+        )
+        self._pose_detector = vision.PoseLandmarker.create_from_options(pose_options)
 
     def normalize_landmarks(
         self,
@@ -113,22 +153,35 @@ class LandmarkExtractor:
 
     def process_image_frame(self, bgr_frame: np.ndarray) -> np.ndarray:
         """
-        Extracts landmarks directly from an OpenCV BGR image frame.
+        Extracts and normalizes landmarks directly from an OpenCV BGR video frame.
         """
+        self._ensure_models_loaded()
+        import mediapipe as mp
+
         rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
-        holistic = self._get_mp_holistic()
-        results = holistic.process(rgb_frame)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
-        lh = None
-        if results.left_hand_landmarks:
-            lh = [{'x': p.x, 'y': p.y, 'z': p.z} for p in results.left_hand_landmarks.landmark]
+        hand_res = self._hand_detector.detect(mp_image)
+        pose_res = self._pose_detector.detect(mp_image)
 
-        rh = None
-        if results.right_hand_landmarks:
-            rh = [{'x': p.x, 'y': p.y, 'z': p.z} for p in results.right_hand_landmarks.landmark]
+        lh_dict = None
+        rh_dict = None
 
-        pose = None
-        if results.pose_landmarks:
-            pose = [{'x': p.x, 'y': p.y, 'z': p.z} for p in results.pose_landmarks.landmark]
+        if hand_res and hand_res.hand_landmarks:
+            for idx, hand_landmarks in enumerate(hand_res.hand_landmarks):
+                # Check handedness if available
+                handedness = 'Right'
+                if idx < len(hand_res.handedness) and len(hand_res.handedness[idx]) > 0:
+                    handedness = hand_res.handedness[idx][0].category_name
 
-        return self.normalize_landmarks(lh, rh, pose)
+                points = [{'x': p.x, 'y': p.y, 'z': p.z} for p in hand_landmarks]
+                if handedness == 'Left':
+                    lh_dict = points
+                else:
+                    rh_dict = points
+
+        pose_dict = None
+        if pose_res and pose_res.pose_landmarks and len(pose_res.pose_landmarks) > 0:
+            pose_dict = [{'x': p.x, 'y': p.y, 'z': p.z} for p in pose_res.pose_landmarks[0]]
+
+        return self.normalize_landmarks(lh_dict, rh_dict, pose_dict)

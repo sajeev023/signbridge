@@ -8,7 +8,9 @@ import {
   Cpu, 
   GraduationCap, 
   Info,
-  Sparkles
+  Sparkles,
+  BarChart3,
+  ShieldCheck
 } from 'lucide-react';
 import { SupportedLanguage } from '../types';
 import { speechService } from '../services/speechService';
@@ -38,7 +40,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'history', label: 'History', icon: History },
     { id: 'vocabulary', label: 'ISL Vocabulary', icon: BookOpen },
     { id: 'learning', label: 'Practice Studio', icon: GraduationCap },
+    { id: 'research', label: 'Research & Metrics', icon: BarChart3 },
     { id: 'technical', label: 'Technical Spec', icon: Cpu },
+    { id: 'privacy', label: 'Privacy', icon: ShieldCheck },
     { id: 'about', label: 'About', icon: Info },
   ];
 
