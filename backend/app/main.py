@@ -3,11 +3,14 @@ import time
 import tempfile
 import os
 import shutil
+import uuid
+import asyncio
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from app.config import (
@@ -20,14 +23,17 @@ from app.services.video_processor import VideoProcessor, MAX_VIDEO_SIZE_BYTES, A
 
 app = FastAPI(
     title="SIGNBRIDGE API",
-    description="SIGNBRIDGE 2.0 AI Indian Sign Language Recognition, Translation & Voice Service",
-    version="2.0.0"
+    description="SIGNBRIDGE 2.1 AI Indian Sign Language Recognition, Translation & Voice Service",
+    version="2.1.0"
 )
+
+# Concurrency limiter: maximum 4 concurrent video processing operations to prevent worker thread starvation
+video_semaphore = asyncio.Semaphore(4)
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all for local prototyping, exhibition LAN, and cloud deployment
+    allow_origins=CORS_ORIGINS if CORS_ORIGINS else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,7 +65,7 @@ class PracticePayload(BaseModel):
 def health_check():
     return {
         "status": "healthy",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "model_loaded": inference_engine.is_loaded,
         "device": str(inference_engine.device),
         "supported_vocabulary_count": len(VOCABULARY_LIST),
@@ -117,7 +123,7 @@ def get_research_metrics():
         "synthetic_benchmark": "VERIFIED (180 held-out test sequences, 100% accuracy, 2.07ms latency)",
         "real_world_validation": "PROTOCOLED & BENCHMARKING (ISLRTC/INCLUDE protocol documented in research/REAL_WORLD_VALIDATION.md)",
         "confidence_threshold": CONFIDENCE_THRESHOLD,
-        "model_version": "2.0.0"
+        "model_version": "2.1.0"
     }
     return data
 
@@ -147,18 +153,19 @@ async def predict_video(file: UploadFile = File(...)):
     Decodes video, uniformly samples 30 temporal frames, extracts landmarks,
     and runs the PyTorch BiLSTM gesture classifier.
     """
-    # 1. Validate file extension
-    ext = Path(file.filename or "video.mp4").suffix.lower()
+    # 1. Sanitize filename and validate file extension
+    raw_name = os.path.basename(file.filename or "video.mp4")
+    ext = Path(raw_name).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported video format '{ext}'. Supported formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
-    # 2. Write to secure temporary file
+    # 2. Write to secure isolated temporary file using UUID
     temp_dir = Path(tempfile.gettempdir()) / "signbridge_uploads"
     temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_file_path = temp_dir / f"upload_{int(time.time()*1000)}_{file.filename}"
+    temp_file_path = temp_dir / f"upload_{uuid.uuid4().hex}{ext}"
 
     try:
         total_size = 0
@@ -172,17 +179,21 @@ async def predict_video(file: UploadFile = File(...)):
                     )
                 buffer.write(chunk)
 
-        # 3. Process video
-        try:
-            result = video_processor.process_video_upload(temp_file_path)
-            return result
-        except ValueError as ve:
-            raise HTTPException(status_code=422, detail=str(ve))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Video recognition failed: {str(e)}")
+        if total_size == 0:
+            raise HTTPException(status_code=422, detail="Uploaded file is empty (0 bytes).")
+
+        # 3. Offload CPU-bound video processing to threadpool under concurrency semaphore
+        async with video_semaphore:
+            try:
+                result = await run_in_threadpool(video_processor.process_video_upload, temp_file_path)
+                return result
+            except ValueError as ve:
+                raise HTTPException(status_code=422, detail=str(ve))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Video recognition failed: {str(e)}")
 
     finally:
-        # 4. Mandatory resource cleanup: delete temporary file
+        # 4. Mandatory transient resource cleanup: delete temporary file
         if temp_file_path.exists():
             try:
                 os.remove(temp_file_path)
@@ -195,6 +206,12 @@ def evaluate_practice(payload: PracticePayload):
     Evaluates a user's signing attempt in Learning/Practice mode
     against canonical ISL kinematics.
     """
+    if payload.target_sign not in CLASS_NAMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target sign '{payload.target_sign}' not found in supported vocabulary."
+        )
+
     pred_result = inference_engine.push_landmarks(
         left_hand=payload.left_hand,
         right_hand=payload.right_hand,
@@ -218,7 +235,14 @@ async def practice_video(
     """
     Upload a video to evaluate practice form against a specific target sign.
     """
-    ext = Path(file.filename or "video.mp4").suffix.lower()
+    if target_sign not in CLASS_NAMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target sign '{target_sign}' not found in supported vocabulary. Supported: {', '.join(CLASS_NAMES)}"
+        )
+
+    raw_name = os.path.basename(file.filename or "video.mp4")
+    ext = Path(raw_name).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
@@ -227,18 +251,36 @@ async def practice_video(
 
     temp_dir = Path(tempfile.gettempdir()) / "signbridge_practice_uploads"
     temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_file_path = temp_dir / f"practice_{int(time.time()*1000)}_{file.filename}"
+    temp_file_path = temp_dir / f"practice_{uuid.uuid4().hex}{ext}"
 
     try:
+        total_size = 0
         with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            while chunk := await file.read(1024 * 1024):
+                total_size += len(chunk)
+                if total_size > MAX_VIDEO_SIZE_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Video file exceeds maximum allowed limit of 50 MB."
+                    )
+                buffer.write(chunk)
 
-        eval_result = video_processor.process_practice_video(temp_file_path, target_sign)
-        return eval_result
-    except ValueError as ve:
-        raise HTTPException(status_code=422, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Practice video analysis failed: {str(e)}")
+        if total_size == 0:
+            raise HTTPException(status_code=422, detail="Uploaded file is empty (0 bytes).")
+
+        async with video_semaphore:
+            try:
+                eval_result = await run_in_threadpool(
+                    video_processor.process_practice_video,
+                    temp_file_path,
+                    target_sign
+                )
+                return eval_result
+            except ValueError as ve:
+                raise HTTPException(status_code=422, detail=str(ve))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Practice video analysis failed: {str(e)}")
+
     finally:
         if temp_file_path.exists():
             try:
@@ -311,7 +353,7 @@ else:
     def root():
         return {
             "project": "SIGNBRIDGE",
-            "version": "2.0.0",
+            "version": "2.1.0",
             "tagline": "AI-Powered Indian Sign Language Recognition, Translation & Voice System",
             "status": "online",
             "docs_url": "/docs"

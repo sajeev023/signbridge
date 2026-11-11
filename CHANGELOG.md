@@ -1,6 +1,29 @@
 # Changelog
 All notable changes to the SIGNBRIDGE project are documented here.
 
+## [2.1.0-rc1] - Release Candidate - 2026-11-11
+
+### Reliability & Concurrency Hardening
+- **Async Threadpool Offloading**: Offloaded CPU-bound OpenCV decoding, MediaPipe landmark extraction, and PyTorch inference to background threadpools via `starlette.concurrency.run_in_threadpool`, ensuring the FastAPI event loop remains responsive to healthchecks and concurrent requests.
+- **Concurrency Rate Limiting**: Added `asyncio.Semaphore(4)` on video upload endpoints to prevent worker starvation and memory exhaustion under concurrent upload bursts.
+- **Path Traversal Protection**: Sanitized upload filenames with `os.path.basename` and assigned collision-resistant UUID-based temp filenames.
+- **Consistent Size Limits**: Enforced `MAX_VIDEO_SIZE_BYTES` (50MB) streaming chunk validation on both `/api/predict/video` and `/api/practice/video` endpoints, returning `413 Payload Too Large`.
+
+### Privacy Transparency & Disclosures
+- **Operational Disclosures**: Corrected privacy statements across `PrivacyPage.tsx`, `App.tsx`, and `docs/PRIVACY.md` to explicitly differentiate between client-side RAM processing (Live Camera mode) and transient server-side decoding with sub-500ms automated file deletion (Video Upload mode).
+- **Zero Disk Persistence Guarantee**: Added explicit verification testing confirming zero lingering temporary files after both successful and failed upload attempts.
+
+### Quality Assurance & Benchmarking
+- **Comprehensive Video Testing Suite**: Authored `backend/tests/test_video_pipeline.py` testing MP4, WebM, MOV, and AVI containers, blank frame rejection, duration boundaries (5 frames to 60 seconds), corrupted headers, and empty files (23 total automated tests passing).
+- **Performance Profiling Suite**: Created `backend/benchmark_performance.py` measuring cold-start import latency, model loading latency (21.56ms), pure CPU inference (1.78ms mean, 563 inferences/sec), and peak process memory (415.59MB).
+
+### Cloud & Container Infrastructure
+- **UTF-8 Requirements Normalization**: Converted `backend/requirements.txt` from Windows UTF-16LE with BOM to clean UTF-8.
+- **Render Deployment Manifest**: Added `render.yaml` defining Docker web service specifications, health check paths, and port configurations.
+- **Dynamic CORS**: Configured `CORS_ORIGINS` to load from environment variables with fallback for local prototyping.
+
+---
+
 ## [2.0.0] - Ultra Legendary Edition - 2026-11-11
 
 ### Architectural Overhaul & Triple-Mode Input

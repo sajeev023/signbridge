@@ -188,10 +188,9 @@ DATASET_FILE = DATA_DIR / "isl_sequences.npz"
 
 # Server Settings
 HOST = "127.0.0.1"
-PORT = 8000
-CORS_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
+PORT = int(os.getenv("PORT", "8000"))
+cors_env = os.getenv("CORS_ORIGINS", "")
+if cors_env:
+    CORS_ORIGINS = [orig.strip() for orig in cors_env.split(",") if orig.strip()]
+else:
+    CORS_ORIGINS = ["*"]

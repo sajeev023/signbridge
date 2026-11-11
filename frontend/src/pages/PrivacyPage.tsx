@@ -23,11 +23,11 @@ export const PrivacyPage: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-navy-950 border border-navy-800 flex items-center justify-center text-emerald-400">
             <EyeOff className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-bold text-white">No Cloud Video Retention</h3>
+          <h3 className="text-base font-bold text-white">Live Camera In-Memory Processing</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Live webcam frames are processed strictly in-memory (RAM) and immediately discarded.
-            No camera feed, video stream, or biometric facial capture is ever recorded, stored on disk,
-            or transmitted to third-party services.
+            In Live Camera mode, video frames are processed strictly in-memory (RAM) by the browser
+            and immediately overwritten. No camera feed, video stream, or biometric facial capture is ever
+            persisted to disk or forwarded to third-party tracking services.
           </p>
         </div>
 
@@ -35,11 +35,11 @@ export const PrivacyPage: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-navy-950 border border-navy-800 flex items-center justify-center text-brand-400">
             <HardDrive className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-bold text-white">Automatic Video Purging</h3>
+          <h3 className="text-base font-bold text-white">Transient Server-Side Video Ingestion</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            When you upload a video in Video Upload Mode, it is temporarily stored in an isolated system directory
-            solely for the duration of landmark decoding (sub-500ms), and is immediately deleted in a mandatory
-            server-side cleanup routine upon completion.
+            In Video Upload mode, uploaded clips are ingested by the backend server into an isolated temporary
+            system folder exclusively for the duration of frame decoding (sub-500ms). The video file is
+            automatically and irrevocably purged from disk upon completion or error.
           </p>
         </div>
 
@@ -47,10 +47,11 @@ export const PrivacyPage: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-navy-950 border border-navy-800 flex items-center justify-center text-sky-400">
             <Lock className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-bold text-white">Local-Only Session Storage</h3>
+          <h3 className="text-base font-bold text-white">Client-Controlled Local History</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Your translation history is maintained exclusively within your browser's private local storage.
-            You have full sovereignty to export your history as a JSON file or purge it completely at any time with one click.
+            Your translation session history is maintained exclusively within your browser's private local storage.
+            No server database records user translations. You can export your session as JSON or purge it
+            with one click at any time.
           </p>
         </div>
 
@@ -58,10 +59,11 @@ export const PrivacyPage: React.FC = () => {
           <div className="w-10 h-10 rounded-xl bg-navy-950 border border-navy-800 flex items-center justify-center text-purple-400">
             <Server className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-bold text-white">Edge-First Inference</h3>
+          <h3 className="text-base font-bold text-white">Self-Contained Model Execution</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Core AI recognition executes on local CPU hardware using our self-contained PyTorch BiLSTM neural model.
-            We do not rely on paid external cloud vision APIs, preventing external telemetry profiling.
+            AI recognition runs on self-hosted PyTorch CPU weights and local MediaPipe models.
+            The system never invokes proprietary external cloud vision APIs, preventing commercial profiling
+            or data harvesting of assistive conversations.
           </p>
         </div>
       </div>
@@ -69,13 +71,14 @@ export const PrivacyPage: React.FC = () => {
       <div className="bg-navy-900/60 border border-navy-800 rounded-2xl p-6 space-y-3">
         <h4 className="text-sm font-bold text-white flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>User Consent & Data Rights Summary</span>
+          <span>User Consent & Operational Transparency</span>
         </h4>
         <ul className="space-y-1.5 text-xs text-slate-400 list-disc list-inside">
-          <li>Camera permissions can be revoked at any time via your browser settings.</li>
-          <li>Video uploads are strictly user-initiated; the system never accesses local storage automatically.</li>
-          <li>Audio synthesis is generated on your device using native browser SpeechSynthesis engines.</li>
-          <li>We collect zero telemetry, tracking cookies, or advertising identifiers.</li>
+          <li><strong>Live Camera:</strong> Client-side frame tracking in RAM; zero server upload of video streams.</li>
+          <li><strong>Video Upload:</strong> Ephemeral server-side processing with immediate automated file deletion.</li>
+          <li><strong>Demonstration Mode:</strong> Simulated trajectory streaming running entirely on the client.</li>
+          <li><strong>Audio:</strong> Synthesized locally via browser SpeechSynthesis API.</li>
+          <li><strong>Analytics:</strong> Zero third-party telemetry, trackers, or commercial cookies.</li>
         </ul>
       </div>
     </div>

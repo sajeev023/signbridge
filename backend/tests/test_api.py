@@ -36,7 +36,7 @@ def test_health_check():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-    assert data["version"] == "2.0.0"
+    assert data["version"] == "2.1.0"
     assert data["model_loaded"] is True
     assert data["supported_vocabulary_count"] == 10
     assert data["features"]["video_upload"] is True
