@@ -1,0 +1,29 @@
+{
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/vocabulary",
+      "destination": "/api/vocabulary"
+    },
+    {
+      "source": "/api/model/info",
+      "destination": "/api/model-info"
+    },
+    {
+      "source": "/api/research/metrics",
+      "destination": "/api/research-metrics"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
