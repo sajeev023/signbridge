@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "evaluation_title": "SIGNBRIDGE Real-World Tracking Validation & Comparative Study",
+    "timestamp": "2026-11-12T14:04:01Z",
+    "total_test_samples": 36,
+    "total_annotated_keypoints": 756,
+    "resolution": "640x480",
+    "tested_pipelines": [
+      "Pipeline A: Raw MediaPipe (Unfiltered)",
+      "Pipeline B: Baseline bd86151 (Uniform 1\u20ac, Static Coasting)",
+      "Pipeline C: New Precision Engine 0cc0863 (Anatomical 1\u20ac, Motion Coasting, Scale Bipartite)"
+    ]
+  },
+  "landmark_accuracy_metrics": {
+    "raw_mediapipe_A": {
+      "mean_px": 7.3,
+      "median_px": 5.91,
+      "p95_px": 18.88,
+      "pck_5px": 41.0,
+      "pck_10px": 78.0,
+      "pck_20px": 95.7,
+      "normalized_error": 0.0597,
+      "fingertips_mae_px": 9.19,
+      "wrist_palm_mae_px": 6.66,
+      "observations_count": 319,
+      "predictions_count": 0
+    },
+    "baseline_bd86151_B": {
+      "mean_px": 6.99,
+      "median_px": 5.61,
+      "p95_px": 18.81,
+      "pck_5px": 43.7,
+      "pck_10px": 80.3,
+      "pck_20px": 96.1,
+      "normalized_error": 0.058,
+      "fingertips_mae_px": 9.04,
+      "wrist_palm_mae_px": 6.37,
+      "observations_count": 319,
+      "predictions_count": 21
+    },
+    "precision_engine_0cc0863_C": {
+      "mean_px": 7.03,
+      "median_px": 5.65,
+      "p95_px": 18.83,
+      "pck_5px": 43.2,
+      "pck_10px": 79.9,
+      "pck_20px": 96.2,
+      "normalized_error": 0.0583,
+      "fingertips_mae_px": 9.07,
+      "wrist_palm_mae_px": 6.41,
+      "observations_count": 319,
+      "predictions_count": 21
+    }
+  },
+  "relative_improvements_C_vs_B": {
+    "mae_reduction_px": -0.04,
+    "mae_reduction_pct": -0.6,
+    "p95_reduction_px": -0.02,
+    "fingertip_error_reduction_pct": -0.3,
+    "pck_10px_gain_pct": -0.4,
+    "pck_5px_gain_pct": -0.5
+  },
+  "tracking_robustness_metrics": {
+    "detection_loss_frequency": "2 drops in 36 frames (5.5%)",
+    "raw_mediapipe_continuity_pct": 94.4,
+    "baseline_bd86151_continuity_pct": 94.4,
+    "precision_0cc0863_continuity_pct": 94.4,
+    "occlusion_recovery_rate_pct": 100.0,
+    "identity_switches": 0,
+    "reacquisition_latency_ms": {
+      "raw_mediapipe": "N/A (dropped frames completely lost)",
+      "baseline_bd86151": 66.7,
+      "precision_0cc0863": 33.3
+    }
+  },
+  "alphabet_classification_accuracy": {
+    "total_tested_single_hand_signs": 30,
+    "ground_truth_accuracy_pct": 10.0,
+    "raw_mediapipe_accuracy_pct": 26.7,
+    "baseline_bd86151_accuracy_pct": 30.0,
+    "precision_0cc0863_accuracy_pct": 30.0,
+    "confusion_matrix_sample": {
+      "A": {
+        "NEUTRAL": 1,
+        "E": 2
+      },
+      "B": {
+        "B": 2
+      },
+      "C": {
+        "C": 2
+      },
+      "D": {
+        "D": 1
+      },
+      "E": {
+        "O": 1
+      },
+      "F": {
+        "E": 1
+      },
+      "L": {
+        "L": 4,
+        "D": 2,
+        "Y": 1
+      },
+      "O": {
+        "I": 2
+      },
+      "R": {
+        "L": 2
+      },
+      "U": {
+        "L": 1
+      },
+      "V": {
+        "L": 3,
+        "R": 1
+      },
+      "Y": {
+        "I": 1,
+        "O": 1
+      }
+    },
+    "false_acceptance_rate_pct": 2.8,
+    "false_rejection_rate_pct": 4.2
+  }
+}
