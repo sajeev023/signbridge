@@ -18,13 +18,15 @@ import {
   CheckCircle2,
   Gauge,
   Terminal,
-  Crosshair,
-  Shield,
   Play,
   FlaskConical,
-  BarChart3,
   TrendingDown,
-  Info
+  Sparkles,
+  BookOpen,
+  X,
+  Hand,
+  Settings2,
+  HelpCircle
 } from 'lucide-react';
 import { webMediaPipe } from '../services/webMediaPipeService';
 import {
@@ -34,39 +36,39 @@ import {
   LandmarkPoint
 } from '../services/alphabetInferenceEngine';
 import { PersistentHandTrack } from '../services/persistentHandTracker';
-import { TrackingQualityReport, TrackingStatusState } from '../services/trackingQualityEngine';
+import { TrackingQualityReport } from '../services/trackingQualityEngine';
 import { speechService } from '../services/speechService';
 import { HAND_CONNECTIONS } from '../services/cameraLandmarkDetector';
 import { TrackingBenchmarkLab, ComparativeBenchmarkResult } from '../services/trackingBenchmarkLab';
 
-// Reference guide for supported alphabet signs
-const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string }> = {
-  A: { desc: '1-Hand: Closed fist with thumb on side. 2-Hand: Dominant index on base thumb tip.', standard: 'Unified' },
-  B: { desc: '1-Hand: 4 fingers upright, thumb across palm. 2-Hand: Two touching loops.', standard: 'Unified' },
-  C: { desc: 'Curved C-arc formed with thumb and curved fingers.', standard: 'Single-Hand' },
-  D: { desc: '1-Hand: Index pointing up, thumb touching other fingers. 2-Hand: Vertical index + semicircle loop.', standard: 'Unified' },
-  E: { desc: '1-Hand: Fingers curled tightly, thumb tucked. 2-Hand: Dominant index on base index tip.', standard: 'Unified' },
-  F: { desc: '1-Hand: Index-thumb loop, 3 fingers upright. 2-Hand: Crossed two fingers.', standard: 'Unified' },
-  G: { desc: '1-Hand: Index horizontal, thumb forward. 2-Hand: Fists touching knuckles.', standard: 'Unified' },
-  H: { desc: '1-Hand: Index & middle horizontal together. 2-Hand: Flat dominant palm across base palm.', standard: 'Unified' },
-  I: { desc: '1-Hand: Pinky pointing upright. 2-Hand: Dominant index on base middle tip.', standard: 'Unified' },
-  J: { desc: 'Dynamic: Dominant index starts at I and carves downward curved hook.', standard: 'Dynamic' },
-  K: { desc: '1-Hand: Index upright, middle forward, thumb between. 2-Hand: Hooked index on vertical index.', standard: 'Unified' },
-  L: { desc: 'Single hand thumb and index at 90° right angle, remaining fingers folded.', standard: 'Single-Hand' },
-  M: { desc: '2-Hand: Dominant 3 fingers placed down on base palm.', standard: 'ISLRTC Dual' },
-  N: { desc: '2-Hand: Dominant 2 fingers placed down on base palm.', standard: 'ISLRTC Dual' },
-  O: { desc: '1-Hand: All fingers and thumb touching tips (O-circle). 2-Hand: Dominant index on base ring tip.', standard: 'Unified' },
-  P: { desc: '2-Hand: Non-dominant index vertical + dominant loop at top.', standard: 'ISLRTC Dual' },
-  Q: { desc: '2-Hand: Base thumb-index loop + dominant index at bottom edge.', standard: 'ISLRTC Dual' },
-  R: { desc: 'Index and middle fingers crossed over each other.', standard: 'Single-Hand' },
-  S: { desc: '2-Hand: Both pinkies hooked and locked together.', standard: 'ISLRTC Dual' },
-  T: { desc: '2-Hand: Dominant index touches edge of base index base.', standard: 'ISLRTC Dual' },
-  U: { desc: '1-Hand: Index & middle upright together. 2-Hand: Dominant index on base pinky tip.', standard: 'Unified' },
-  V: { desc: 'Index and middle fingers extended upright spread in a V-shape.', standard: 'Unified' },
-  W: { desc: 'Index, middle, ring fingers extended upright spread in a W-shape.', standard: 'Unified' },
-  X: { desc: 'Index finger hooked/bent, other fingers curled.', standard: 'Single-Hand' },
-  Y: { desc: '1-Hand: Thumb and pinky wide spread (shaka). 2-Hand: Dominant index in base thumb-index cleft.', standard: 'Unified' },
-  Z: { desc: 'Dynamic: Index finger traces 3-stroke zigzag Z trajectory in air or palm.', standard: 'Dynamic' }
+// Comprehensive reference guide for supported alphabet signs
+const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string; category: 'single' | 'dual' | 'dynamic' }> = {
+  A: { desc: 'Make a fist with fingers closed and thumb resting straight along the side of index finger.', standard: 'Unified', category: 'single' },
+  B: { desc: 'Hold four fingers straight up together with thumb folded flat across palm.', standard: 'Unified', category: 'single' },
+  C: { desc: 'Curve all fingers and thumb to form an open "C" shape facing inward.', standard: 'Single-Hand', category: 'single' },
+  D: { desc: 'Point index finger straight up while other fingers and thumb touch to form an "O".', standard: 'Unified', category: 'single' },
+  E: { desc: 'Curl all four fingertips tightly down to touch the thumb tucked underneath.', standard: 'Unified', category: 'single' },
+  F: { desc: 'Touch index tip to thumb tip to make a circle; keep middle, ring, and pinky straight up.', standard: 'Unified', category: 'single' },
+  G: { desc: 'Point index finger horizontally forward with thumb extended parallel to it.', standard: 'Unified', category: 'single' },
+  H: { desc: 'Extend index and middle fingers together horizontally with thumb tucked in.', standard: 'Unified', category: 'single' },
+  I: { desc: 'Make a fist and extend only the pinky finger straight up.', standard: 'Unified', category: 'single' },
+  J: { desc: 'Start with the "I" sign (pinky up) and draw a downward "J" curve in the air.', standard: 'Dynamic', category: 'dynamic' },
+  K: { desc: 'Index points straight up, middle finger angles forward, thumb touches middle knuckle.', standard: 'Unified', category: 'single' },
+  L: { desc: 'Extend thumb and index finger at a 90° right angle to form an "L"; curl other fingers.', standard: 'Single-Hand', category: 'single' },
+  M: { desc: 'ISLRTC: Place dominant 3 fingers (index, middle, ring) facing down onto non-dominant palm.', standard: 'ISLRTC Dual', category: 'dual' },
+  N: { desc: 'ISLRTC: Place dominant 2 fingers (index, middle) facing down onto non-dominant palm.', standard: 'ISLRTC Dual', category: 'dual' },
+  O: { desc: 'Touch all four fingertips to thumb tip to form an open circular "O" shape.', standard: 'Unified', category: 'single' },
+  P: { desc: 'ISLRTC: Hold base index vertical; place dominant thumb-index loop against top knuckle.', standard: 'ISLRTC Dual', category: 'dual' },
+  Q: { desc: 'ISLRTC: Form a circle with base hand; place dominant index at the bottom edge.', standard: 'ISLRTC Dual', category: 'dual' },
+  R: { desc: 'Cross the middle finger over the back of the extended index finger.', standard: 'Single-Hand', category: 'single' },
+  S: { desc: 'ISLRTC: Hook dominant and base pinky fingers together tightly.', standard: 'ISLRTC Dual', category: 'dual' },
+  T: { desc: 'ISLRTC: Touch dominant index finger to the outer side base of non-dominant index.', standard: 'ISLRTC Dual', category: 'dual' },
+  U: { desc: 'Extend index and middle fingers straight up together; keep thumb folded across ring finger.', standard: 'Unified', category: 'single' },
+  V: { desc: 'Extend index and middle fingers straight up spread apart in a clear "V" peace sign.', standard: 'Unified', category: 'single' },
+  W: { desc: 'Extend index, middle, and ring fingers straight up spread apart in a "W" shape.', standard: 'Unified', category: 'single' },
+  X: { desc: 'Curl index finger into a hook shape like a pirate hook; fold other fingers in.', standard: 'Single-Hand', category: 'single' },
+  Y: { desc: 'Extend thumb and pinky finger outward while folding middle three fingers down (shaka sign).', standard: 'Unified', category: 'single' },
+  Z: { desc: 'Dynamic: Trace a 3-stroke "Z" in the air using your extended index finger.', standard: 'Dynamic', category: 'dynamic' }
 };
 
 interface BenchmarkMetrics {
@@ -89,15 +91,21 @@ export function LiveISLAlphabetRecognizer() {
   const [latencyMs, setLatencyMs] = useState<number>(0);
   const [trackedHandCount, setTrackedHandCount] = useState<number>(0);
 
-  // Diagnostic HUD & View Options
-  const [showDiagnosticHUD, setShowDiagnosticHUD] = useState<boolean>(false);
-  const [showReferenceDrawer, setShowReferenceDrawer] = useState<boolean>(false);
-  const [showCalibrationDeck, setShowCalibrationDeck] = useState<boolean>(false);
-  const [showBenchmarkLab, setShowBenchmarkLab] = useState<boolean>(false);
+  // UI Modal & Drawer Toggles
+  const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
+  const [guideFilter, setGuideFilter] = useState<'all' | 'single' | 'dual'>('all');
+  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
+
+  // Benchmarking State
   const [benchmarkReport, setBenchmarkReport] = useState<ComparativeBenchmarkResult | null>(null);
   const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
+  const [isCalibrating, setIsCalibrating] = useState<boolean>(false);
+  const [calibrationLetter, setCalibrationLetter] = useState<string>('L');
+  const [calibrationResults, setCalibrationResults] = useState<BenchmarkMetrics | null>(null);
+  const calibrationFramesRef = useRef<Array<{ predicted: string; latency: number; jitter: number; isTracked: boolean }>>([]);
+  const calibrationStartTimeRef = useRef<number>(0);
 
-  // Scientific Convention Selection
+  // Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
 
   // Multi-Stage Tracking & Quality Telemetry
@@ -111,7 +119,7 @@ export function LiveISLAlphabetRecognizer() {
     trackedHandsCount: 0,
     continuityFrames: 0,
     isReliableForInference: false,
-    recommendation: 'Position hands in camera viewfinder.',
+    recommendation: 'Position hand within camera frame.',
     perFingerTelemetry: [],
     identitySwitchesCount: 0,
     reacquisitionsCount: 0
@@ -121,19 +129,12 @@ export function LiveISLAlphabetRecognizer() {
   const [currentResult, setCurrentResult] = useState<InferenceResult | null>(null);
   const [stableLockedLetter, setStableLockedLetter] = useState<string | null>(null);
   const [stabilityProgress, setStabilityProgress] = useState<number>(0);
-  const [statusMessage, setStatusMessage] = useState<string>('SYSTEM STANDBY');
+  const [statusMessage, setStatusMessage] = useState<string>('Ready to start camera');
 
   // Text Composition Terminal State
   const [textBuffer, setTextBuffer] = useState<string>('');
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
-
-  // Real-Time Calibration & Benchmark Test Bench State
-  const [isCalibrating, setIsCalibrating] = useState<boolean>(false);
-  const [calibrationLetter, setCalibrationLetter] = useState<string>('L');
-  const [calibrationResults, setCalibrationResults] = useState<BenchmarkMetrics | null>(null);
-  const calibrationFramesRef = useRef<Array<{ predicted: string; latency: number; jitter: number; isTracked: boolean }>>([]);
-  const calibrationStartTimeRef = useRef<number>(0);
 
   // DOM & Animation Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -180,13 +181,13 @@ export function LiveISLAlphabetRecognizer() {
     setCurrentResult(null);
     setStableLockedLetter(null);
     setStabilityProgress(0);
-    setStatusMessage('OPTICAL SENSORS INACTIVE');
+    setStatusMessage('Camera stopped');
   }, []);
 
   const startCamera = async () => {
     setCameraError(null);
     setIsInitializing(true);
-    setStatusMessage('INITIALIZING MEDIAPIPE WEB GPU ENGINE...');
+    setStatusMessage('Connecting AI vision model...');
 
     try {
       const mpReady = await webMediaPipe.init();
@@ -212,7 +213,7 @@ export function LiveISLAlphabetRecognizer() {
             videoRef.current.play().catch((err) => console.warn('Autoplay error:', err));
             setIsCameraActive(true);
             setIsInitializing(false);
-            setStatusMessage('OPTICAL TRACKING ACQUIRED');
+            setStatusMessage('Camera active — show hand sign');
             runVisionPipeline();
           }
         };
@@ -223,11 +224,11 @@ export function LiveISLAlphabetRecognizer() {
       setIsCameraActive(false);
 
       if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
-        setCameraError('Permission Denied: Camera access was blocked by the browser. Enable permissions in the address bar.');
+        setCameraError('Camera access was blocked by your browser. Please tap the lock icon in your URL bar and allow camera access.');
       } else if (err instanceof DOMException && err.name === 'NotFoundError') {
-        setCameraError('Sensor Fault: No camera hardware detected on this device.');
+        setCameraError('No camera found on this device.');
       } else {
-        setCameraError(err instanceof Error ? err.message : 'Unknown hardware initialization error.');
+        setCameraError(err instanceof Error ? err.message : 'Unknown camera initialization error.');
       }
     }
   };
@@ -241,85 +242,35 @@ export function LiveISLAlphabetRecognizer() {
     }
   };
 
-  // High-precision anatomical skeleton & HUD renderer
+  // Modern sleek skeletal rendering
   const renderPrecisionViewfinder = (
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
     tracks: PersistentHandTrack[],
-    quality: TrackingQualityReport,
-    isLocked: boolean,
-    showDiagnostics: boolean
+    isLocked: boolean
   ) => {
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Viewfinder Corner HUD (Scientific aesthetic)
-    const isDegraded = quality.status === 'TRACKING DEGRADED';
-    ctx.strokeStyle = isLocked ? '#10b981' : isDegraded ? '#f59e0b' : 'rgba(56, 189, 248, 0.4)';
-    ctx.lineWidth = 1.5;
-    const corner = 22;
-    const pad = 14;
+    if (!tracks || tracks.length === 0) return;
 
-    // Corner reticles
-    ctx.beginPath();
-    ctx.moveTo(pad, pad + corner);
-    ctx.lineTo(pad, pad);
-    ctx.lineTo(pad + corner, pad);
-    ctx.moveTo(width - pad - corner, pad);
-    ctx.lineTo(width - pad, pad);
-    ctx.lineTo(width - pad, pad + corner);
-    ctx.moveTo(pad, height - pad - corner);
-    ctx.lineTo(pad, height - pad);
-    ctx.lineTo(pad + corner, height - pad);
-    ctx.moveTo(width - pad - corner, height - pad);
-    ctx.lineTo(width - pad, height - pad);
-    ctx.lineTo(width - pad, height - pad - corner);
-    ctx.stroke();
-
-    if (!tracks || tracks.length === 0) {
-      // Crosshair center target
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(width / 2 - 14, height / 2);
-      ctx.lineTo(width / 2 + 14, height / 2);
-      ctx.moveTo(width / 2, height / 2 - 14);
-      ctx.lineTo(width / 2, height / 2 + 14);
-      ctx.stroke();
-      return;
-    }
-
-    // 2. Render Anatomical Bone Chains & Palm Membranes
     tracks.forEach((track) => {
       const lm = track.smoothedLandmarks;
       const isDominant = track.role === 'Dominant';
       const isCoasting = track.isCoasting;
+
+      // Glow & stroke colors
       const boneStroke = isLocked
-        ? 'rgba(16, 185, 129, 0.9)'
+        ? 'rgba(52, 211, 153, 0.95)' // emerald
         : isCoasting
-        ? 'rgba(245, 158, 11, 0.75)'
+        ? 'rgba(251, 191, 36, 0.85)' // amber
         : isDominant
-        ? 'rgba(56, 189, 248, 0.85)'
-        : 'rgba(245, 158, 11, 0.85)';
-      const jointFill = isLocked ? '#34d399' : isCoasting ? '#f59e0b' : isDominant ? '#38bdf8' : '#fbbf24';
+        ? 'rgba(96, 165, 250, 0.95)' // bright cyan-blue
+        : 'rgba(167, 139, 250, 0.95)'; // violet
 
-      // Diagnostic View: Render Raw OBSERVED landmarks as subtle cyan crosshairs
-      if (showDiagnostics && track.observedLandmarks && track.observedLandmarks.length === 21 && !isCoasting) {
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-        ctx.lineWidth = 1;
-        track.observedLandmarks.forEach((obs) => {
-          const ox = obs.x * width;
-          const oy = obs.y * height;
-          ctx.beginPath();
-          ctx.moveTo(ox - 3, oy);
-          ctx.lineTo(ox + 3, oy);
-          ctx.moveTo(ox, oy - 3);
-          ctx.lineTo(ox, oy + 3);
-          ctx.stroke();
-        });
-      }
+      const jointFill = isLocked ? '#10b981' : isCoasting ? '#f59e0b' : isDominant ? '#38bdf8' : '#a855f7';
 
-      // Palm Membrane Polygon (Wrist -> Thumb CMC -> Index MCP -> Mid MCP -> Ring MCP -> Pinky MCP -> Wrist)
+      // Palm Membrane Polygon (clean subtle fill)
       ctx.beginPath();
       ctx.moveTo(lm[0].x * width, lm[0].y * height);
       ctx.lineTo(lm[1].x * width, lm[1].y * height);
@@ -329,22 +280,26 @@ export function LiveISLAlphabetRecognizer() {
       ctx.lineTo(lm[13].x * width, lm[13].y * height);
       ctx.lineTo(lm[17].x * width, lm[17].y * height);
       ctx.closePath();
-      ctx.fillStyle = isDominant ? 'rgba(56, 189, 248, 0.08)' : 'rgba(245, 158, 11, 0.08)';
+      ctx.fillStyle = isDominant ? 'rgba(56, 189, 248, 0.12)' : 'rgba(168, 85, 247, 0.12)';
       ctx.fill();
 
-      // Finger Bone Chains with anatomical taper
+      // Finger Bone Chains with smooth anti-aliased lines
       for (const [start, end] of HAND_CONNECTIONS) {
         const p1 = lm[start];
         const p2 = lm[end];
         if (p1 && p2) {
           const isMetacarpal = [0, 1, 5, 9, 13, 17].includes(start) && [1, 2, 5, 9, 13, 17].includes(end);
-          ctx.lineWidth = isMetacarpal ? 3.2 : 2.0;
+          ctx.lineWidth = isMetacarpal ? 3.5 : 2.4;
           ctx.strokeStyle = boneStroke;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
           if (isCoasting) {
-            ctx.setLineDash([3, 3]);
+            ctx.setLineDash([4, 4]);
           } else {
             ctx.setLineDash([]);
           }
+
           ctx.beginPath();
           ctx.moveTo(p1.x * width, p1.y * height);
           ctx.lineTo(p2.x * width, p2.y * height);
@@ -353,96 +308,24 @@ export function LiveISLAlphabetRecognizer() {
       }
       ctx.setLineDash([]);
 
-      // Joints & Fingertip Markers
+      // Joints & Fingertips
       for (let i = 0; i < lm.length; i++) {
         const p = lm[i];
         const isTip = [4, 8, 12, 16, 20].includes(i);
-        const radius = isTip ? 4.5 : 2.5;
-        const isPredicted = p.provenance === 'PREDICTED' || isCoasting;
+        const radius = isTip ? 5.5 : 3.0;
 
         ctx.beginPath();
         ctx.arc(p.x * width, p.y * height, radius, 0, 2 * Math.PI);
-        if (isPredicted) {
-          ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
-          ctx.strokeStyle = '#f59e0b';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          ctx.fill();
-        } else {
-          ctx.fillStyle = isTip ? '#ffffff' : jointFill;
-          ctx.fill();
-          ctx.strokeStyle = '#07090d';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-
-        // Optional Diagnostic View: Render Landmark IDs (0..20)
-        if (showDiagnostics) {
-          ctx.fillStyle = isPredicted ? 'rgba(245, 158, 11, 0.9)' : 'rgba(226, 232, 240, 0.85)';
-          ctx.font = '500 8px monospace';
-          ctx.fillText(`${i}${isPredicted ? '*' : ''}`, p.x * width + 5, p.y * height - 3);
-        }
+        ctx.fillStyle = isTip ? '#ffffff' : jointFill;
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       }
-
-      // Track Identity & Role HUD Tag
-      const wrist = lm[0];
-      ctx.fillStyle = isCoasting ? '#f59e0b' : isDominant ? '#38bdf8' : '#fbbf24';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText(
-        `TRK_${track.trackId}:${isCoasting ? 'COASTING' : isDominant ? 'DOMINANT' : 'BASE'} (${track.handedness})`,
-        wrist.x * width - 40,
-        wrist.y * height + 18
-      );
     });
-
-    // Diagnostic Mode Provenance Legend Overlay (Top Right)
-    if (showDiagnostics) {
-      ctx.fillStyle = 'rgba(10, 13, 20, 0.85)';
-      ctx.strokeStyle = '#1e2430';
-      ctx.lineWidth = 1;
-      ctx.fillRect(width - 150, 12, 138, 54);
-      ctx.strokeRect(width - 150, 12, 138, 54);
-
-      ctx.font = 'bold 8px monospace';
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillText('● FILTERED (1€ Tuned)', width - 142, 24);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText('+ OBSERVED (Detector)', width - 142, 38);
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillText('○ PREDICTED (Coasting)', width - 142, 52);
-    }
-
-    // 3. Two-Hand Inter-Contact Radar Aura (Vowel Touch Point)
-    if (tracks.length >= 2) {
-      const h1Idx = tracks[0].smoothedLandmarks[8];
-      const h2Wrist = tracks[1].smoothedLandmarks[0];
-      const h2Thumb = tracks[1].smoothedLandmarks[4];
-      const h2Idx = tracks[1].smoothedLandmarks[8];
-      const h2Mid = tracks[1].smoothedLandmarks[12];
-      const h2Ring = tracks[1].smoothedLandmarks[16];
-      const h2Pinky = tracks[1].smoothedLandmarks[20];
-
-      const targets = [h2Thumb, h2Idx, h2Mid, h2Ring, h2Pinky];
-      for (const t of targets) {
-        const dx = (h1Idx.x - t.x) * width;
-        const dy = (h1Idx.y - t.y) * height;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d < 24) {
-          // Touch Contact Lock Aura
-          ctx.strokeStyle = '#10b981';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.arc(t.x * width, t.y * height, 10, 0, 2 * Math.PI);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(t.x * width, t.y * height, 16, 0, 2 * Math.PI);
-          ctx.stroke();
-        }
-      }
-    }
   };
 
-  // Real-Time Vision Pipeline
+  // Real-Time Vision Pipeline Loop
   const runVisionPipeline = () => {
     if (!videoRef.current || !canvasRef.current || videoRef.current.readyState < 2) {
       animationFrameRef.current = requestAnimationFrame(runVisionPipeline);
@@ -454,7 +337,7 @@ export function LiveISLAlphabetRecognizer() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    // Stage A: Duplicate Frame Elimination (Saves mobile GPU/CPU cycles)
+    // Duplicate frame skipping to conserve mobile battery
     if (video.currentTime === lastVideoTimeRef.current) {
       animationFrameRef.current = requestAnimationFrame(runVisionPipeline);
       return;
@@ -466,7 +349,7 @@ export function LiveISLAlphabetRecognizer() {
       canvas.height = video.videoHeight || 480;
     }
 
-    // Measure FPS
+    // FPS computation
     frameCounterRef.current++;
     if (frameCounterRef.current % 15 === 0) {
       const dt = t0 - lastFrameTimestampRef.current;
@@ -474,12 +357,11 @@ export function LiveISLAlphabetRecognizer() {
       lastFrameTimestampRef.current = t0;
     }
 
-    // Stage B: MediaPipe HandLandmarker Extraction
+    // MediaPipe Hand Detection
     const mpResult = webMediaPipe.detect(video, t0);
     const rawHands = (mpResult?.landmarks as LandmarkPoint[][]) || [];
     setTrackedHandCount(rawHands.length);
 
-    // Stage C, D, E: Persistent Tracking + 1€ Filter + Quality Engine + Classifier
     let result: InferenceResult = {
       sign: 'NEUTRAL',
       confidence: 0,
@@ -498,7 +380,7 @@ export function LiveISLAlphabetRecognizer() {
         trackedHandsCount: 0,
         continuityFrames: 0,
         isReliableForInference: false,
-        recommendation: 'Position hands in viewfinder.',
+        recommendation: 'Show your hand to the camera',
         perFingerTelemetry: [],
         identitySwitchesCount: 0,
         reacquisitionsCount: 0
@@ -522,7 +404,7 @@ export function LiveISLAlphabetRecognizer() {
     const procLatency = Number((t1 - t0).toFixed(1));
     setLatencyMs(procLatency);
 
-    // Stability State Machine & Duplicate Prevention
+    // Stability filtering & automatic letter acceptance
     const sign = result.sign;
     const conf = result.confidence;
     let isLockedNow = false;
@@ -535,7 +417,7 @@ export function LiveISLAlphabetRecognizer() {
       }
       candidateStreakRef.current = 0;
       setStabilityProgress(0);
-      setStatusMessage(result.qualityReport.recommendation);
+      setStatusMessage(rawHands.length === 0 ? 'Position hand in front of camera' : result.qualityReport.recommendation);
     } else {
       neutralFramesRef.current = 0;
 
@@ -548,12 +430,12 @@ export function LiveISLAlphabetRecognizer() {
 
       if (sign === lastAcceptedLetterRef.current) {
         setStabilityProgress(100);
-        setStatusMessage(`LOCKED: "${sign}" — RELEASE TO RETRANSITION`);
+        setStatusMessage(`Holding "${sign}"`);
         isLockedNow = true;
       } else {
         const progress = Math.min(100, Math.round((candidateStreakRef.current / STABILITY_REQUIRED_FRAMES) * 100));
         setStabilityProgress(progress);
-        setStatusMessage(`EVALUATING "${sign}" (${progress}%)`);
+        setStatusMessage(`Recognizing "${sign}"...`);
 
         if (candidateStreakRef.current >= STABILITY_REQUIRED_FRAMES) {
           isLockedNow = true;
@@ -562,12 +444,12 @@ export function LiveISLAlphabetRecognizer() {
           lastAcceptedLetterRef.current = sign;
           candidateStreakRef.current = 0;
           setStabilityProgress(100);
-          setStatusMessage(`ACCEPTED: "${sign}"`);
+          setStatusMessage(`Added "${sign}" to text!`);
         }
       }
     }
 
-    // Benchmark & Calibration Session Sampling
+    // Calibration recording if active
     if (isCalibrating) {
       calibrationFramesRef.current.push({
         predicted: sign,
@@ -577,21 +459,18 @@ export function LiveISLAlphabetRecognizer() {
       });
 
       if (t0 - calibrationStartTimeRef.current >= 10000) {
-        // Conclude 10-second calibration
         concludeCalibration();
       }
     }
 
-    // Stage F: Precision Viewfinder Canvas Rendering
+    // Viewfinder Canvas Render
     if (ctx) {
       renderPrecisionViewfinder(
         ctx,
         canvas.width,
         canvas.height,
         result.tracks,
-        result.qualityReport,
-        isLockedNow,
-        showDiagnosticHUD
+        isLockedNow
       );
     }
 
@@ -642,7 +521,7 @@ export function LiveISLAlphabetRecognizer() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Calibration Protocol Handler
+  // Calibration Protocol
   const startCalibrationSession = (target: string) => {
     setCalibrationLetter(target);
     calibrationFramesRef.current = [];
@@ -664,7 +543,7 @@ export function LiveISLAlphabetRecognizer() {
     setCalibrationResults({
       targetLetter: calibrationLetter,
       totalFrames: total,
-      avgFps: Math.round((total / 10)),
+      avgFps: Math.round(total / 10),
       avgLatencyMs: Number(avgLat.toFixed(1)),
       continuityRate: Math.round((tracked / total) * 100),
       accuracyRate: Math.round((correct / total) * 100),
@@ -686,385 +565,105 @@ export function LiveISLAlphabetRecognizer() {
       ? currentResult?.sign
       : null;
 
+  const confidencePct = Math.round((currentResult?.confidence ?? 0) * 100);
+
+  // Filtered reference guide
+  const filteredGuide = Object.entries(ALPHABET_REFERENCE).filter(([_, info]) => {
+    if (guideFilter === 'single') return info.category === 'single';
+    if (guideFilter === 'dual') return info.category === 'dual';
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-[#07090d] text-[#e2e8f0] flex flex-col font-mono selection:bg-cyan-500 selection:text-black">
-      {/* 1. Header Bar */}
-      <header className="border-b border-[#181d26] bg-[#0c0f16]/95 backdrop-blur px-4 py-2.5">
-        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+      {/* 1. Header Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          {/* Logo & Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded border border-cyan-800/80 bg-cyan-950/60 flex items-center justify-center text-cyan-400 font-bold text-sm">
-              SB
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+              <Hand className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm tracking-wider text-white">SIGNBRIDGE</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#232a37] bg-[#121620] text-slate-400">
-                  SYS 2.1 • 1€ FILTER
+                <span className="font-bold text-base tracking-tight text-white">SIGNBRIDGE</span>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1.5 ${
+                  isCameraActive 
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                    : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isCameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                  {isCameraActive ? 'Live Camera' : 'Standby'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-sans">Multi-Stage Optical Tracking & Neural Alphabet Engine</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Real-Time Indian Sign Language Recognition</p>
             </div>
           </div>
 
-          {/* Telemetry Strip & Toggles */}
-          <div className="flex items-center gap-2 text-[11px]">
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-2">
+            {/* Sign Language Guide Button */}
             <button
-              onClick={() => setShowDiagnosticHUD(!showDiagnosticHUD)}
-              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showDiagnosticHUD
-                  ? 'border-cyan-800 bg-cyan-950/80 text-cyan-300 font-bold'
-                  : 'border-[#1e2430] bg-[#10141d] text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={() => setShowGuideModal(true)}
+              className="px-3 py-1.5 rounded-xl border border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
             >
-              <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{showDiagnosticHUD ? 'DIAG: ON' : 'DIAG'}</span>
+              <BookOpen className="w-4 h-4 text-cyan-400" />
+              <span className="hidden sm:inline">Sign Guide</span>
             </button>
 
-            <button
-              onClick={() => setShowCalibrationDeck(!showCalibrationDeck)}
-              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showCalibrationDeck
-                  ? 'border-amber-800 bg-amber-950/80 text-amber-300 font-bold'
-                  : 'border-[#1e2430] bg-[#10141d] text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Gauge className="w-3.5 h-3.5 text-amber-400" />
-              <span>CALIBRATION</span>
-            </button>
-
-            <button
-              onClick={() => setShowBenchmarkLab(!showBenchmarkLab)}
-              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showBenchmarkLab
-                  ? 'border-emerald-800 bg-emerald-950/80 text-emerald-300 font-bold'
-                  : 'border-[#1e2430] bg-[#10141d] text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <FlaskConical className="w-3.5 h-3.5 text-emerald-400" />
-              <span>BENCHMARK LAB</span>
-            </button>
-
+            {/* Audio Voice Toggle */}
             <button
               onClick={() => {
                 const n = !isMuted;
                 setIsMuted(n);
                 speechService.setMuted(n);
               }}
-              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${
                 isMuted
-                  ? 'border-rose-900/60 bg-rose-950/40 text-rose-300'
-                  : 'border-[#1e2430] bg-[#10141d] text-slate-300 hover:bg-[#151b27]'
+                  ? 'border-rose-900/40 bg-rose-950/30 text-rose-300'
+                  : 'border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 text-slate-200'
               }`}
+              title={isMuted ? 'Unmute speech' : 'Mute speech'}
             >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-cyan-400" />}
-              <span className="hidden sm:inline">{isMuted ? 'MUTED' : 'VOICE'}</span>
+              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+              <span className="hidden sm:inline">{isMuted ? 'Muted' : 'Voice'}</span>
             </button>
 
+            {/* Diagnostics / Science Fair Lab Toggle */}
             <button
-              onClick={() => setShowReferenceDrawer(!showReferenceDrawer)}
-              className="px-2 py-1 rounded border border-[#1e2430] bg-[#10141d] text-slate-300 hover:bg-[#151b27] flex items-center gap-1.5 transition-colors cursor-pointer"
+              onClick={() => setShowDiagnostics(!showDiagnostics)}
+              className={`p-2 rounded-xl border text-xs font-medium transition-all shadow-sm active:scale-95 cursor-pointer ${
+                showDiagnostics
+                  ? 'border-indigo-500/60 bg-indigo-500/20 text-indigo-300'
+                  : 'border-slate-700/80 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200'
+              }`}
+              title="Diagnostics & Benchmarks"
             >
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <span>REF</span>
-              {showReferenceDrawer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              <Settings2 className="w-4 h-4" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* 2. Main Instrument Layout */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5 space-y-3 font-sans">
-        {/* Error Alert */}
+      {/* 2. Main Content Container */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        {/* Camera Hardware / Permission Error Notice */}
         {cameraError && (
-          <div className="p-3.5 rounded border border-rose-900/80 bg-rose-950/30 text-rose-300 text-xs flex items-start gap-3 font-mono">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-rose-200">OPTICAL ACQUISITION ERROR:</strong> {cameraError}
+          <div className="p-4 rounded-2xl border border-rose-800/60 bg-rose-950/40 text-rose-200 text-sm flex items-start gap-3 shadow-lg">
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-rose-100">Camera Access Notice</p>
+              <p className="text-xs text-rose-300/90 leading-relaxed">{cameraError}</p>
             </div>
           </div>
         )}
 
-        {/* Real-World Calibration & Diagnostic Deck (Collapsible) */}
-        {showCalibrationDeck && (
-          <div className="p-4 rounded border border-[#1f2636] bg-[#0c1017] space-y-3 font-mono text-xs animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1b212c] pb-2">
-              <span className="text-amber-400 font-bold tracking-wider flex items-center gap-2">
-                <Gauge className="w-4 h-4" />
-                EMPIRICAL CAMERA CALIBRATION & BENCHMARK BENCH
-              </span>
-              <span className="text-[11px] text-slate-400 font-sans">
-                Real-World 10-Second Physical Device Evaluation Protocol
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">Target Sign:</span>
-                <select
-                  value={calibrationLetter}
-                  onChange={(e) => setCalibrationLetter(e.target.value)}
-                  disabled={isCalibrating}
-                  className="bg-[#121620] border border-[#232a37] text-cyan-300 px-2 py-1 rounded text-xs"
-                >
-                  {Object.keys(ALPHABET_REFERENCE).map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                onClick={() => startCalibrationSession(calibrationLetter)}
-                disabled={isCalibrating || !isCameraActive}
-                className="px-4 py-1.5 rounded border border-amber-600 bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-40 text-amber-300 font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                <Play className="w-3.5 h-3.5" />
-                <span>{isCalibrating ? 'RECORDING (10s)...' : 'START 10s CALIBRATION'}</span>
-              </button>
-            </div>
-
-            {/* Benchmark Report */}
-            {calibrationResults && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-2 border-t border-[#181e28]">
-                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
-                  <span className="text-[10px] text-slate-500">SIGN</span>
-                  <p className="text-base font-bold text-cyan-400">{calibrationResults.targetLetter}</p>
-                </div>
-                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
-                  <span className="text-[10px] text-slate-500">ACCURACY</span>
-                  <p className="text-base font-bold text-emerald-400">{calibrationResults.accuracyRate}%</p>
-                </div>
-                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
-                  <span className="text-[10px] text-slate-500">CONTINUITY</span>
-                  <p className="text-base font-bold text-slate-200">{calibrationResults.continuityRate}%</p>
-                </div>
-                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
-                  <span className="text-[10px] text-slate-500">CAMERA FPS</span>
-                  <p className="text-base font-bold text-slate-200">{calibrationResults.avgFps}</p>
-                </div>
-                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
-                  <span className="text-[10px] text-slate-500">LATENCY</span>
-                  <p className="text-base font-bold text-slate-200">{calibrationResults.avgLatencyMs} ms</p>
-                </div>
-                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
-                  <span className="text-[10px] text-slate-500">JITTER VAR</span>
-                  <p className="text-base font-bold text-amber-400">{calibrationResults.avgJitter}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Precision Tracking Benchmark Lab Deck (Collapsible) */}
-        {showBenchmarkLab && (
-          <div className="p-4 rounded border border-[#1f2636] bg-[#0c1017] space-y-4 font-mono text-xs animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1b212c] pb-2">
-              <span className="text-emerald-400 font-bold tracking-wider flex items-center gap-2">
-                <FlaskConical className="w-4 h-4 text-emerald-400" />
-                PRECISION TRACKING RESEARCH BENCHMARK LAB
-              </span>
-              <span className="text-[11px] text-slate-400 font-sans">
-                Deterministic Ground-Truth 90-Frame Benchmark (Static Jitter, High-Speed Translation, 3-Frame Occlusion)
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-[11px] text-slate-400 font-sans max-w-xl">
-                Executes an automated comparative test across 90 annotated ground-truth keypoint frames to evaluate
-                Mean Absolute Error (MAE), Percentage of Correct Keypoints (PCK@10/20), Fingertip precision, and recovery continuity.
-              </div>
-
-              <button
-                onClick={runBenchmarkSuite}
-                disabled={isRunningBenchmark}
-                className="px-4 py-2 rounded border border-emerald-600 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-40 text-emerald-300 font-bold flex items-center gap-2 cursor-pointer transition-colors"
-              >
-                {isRunningBenchmark ? (
-                  <>
-                    <Activity className="w-4 h-4 animate-spin text-emerald-400" />
-                    <span>BENCHMARKING 90 FRAMES...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 text-emerald-400" />
-                    <span>RUN COMPARATIVE BENCHMARK</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Benchmark Report Results */}
-            {benchmarkReport && (
-              <div className="space-y-3 pt-2 border-t border-[#181e28]">
-                {/* Improvement Summary Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                      <TrendingDown className="w-3 h-3 text-emerald-400" />
-                      FINGERTIP PRECISION GAIN
-                    </span>
-                    <p className="text-lg font-bold text-emerald-400">
-                      +{benchmarkReport.improvementMetrics.fingertipMAEReductionPct}%
-                    </p>
-                    <span className="text-[9px] text-slate-500">
-                      {benchmarkReport.baselineCommit.fingertipMAE}px → {benchmarkReport.newPrecisionEngine.fingertipMAE}px
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
-                    <span className="text-[10px] text-slate-400">PCK@10px ACCURACY GAIN</span>
-                    <p className="text-lg font-bold text-cyan-400">
-                      +{benchmarkReport.improvementMetrics.pck10GainPct}%
-                    </p>
-                    <span className="text-[9px] text-slate-500">Keypoints ≤10px from GT</span>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
-                    <span className="text-[10px] text-slate-400">TRACKING CONTINUITY</span>
-                    <p className="text-lg font-bold text-slate-200">
-                      {benchmarkReport.newPrecisionEngine.continuityRate}%
-                    </p>
-                    <span className="text-[9px] text-slate-500">Survives sensor dropouts</span>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
-                    <span className="text-[10px] text-slate-400">PIPELINE OVERHEAD</span>
-                    <p className="text-lg font-bold text-amber-400">
-                      {benchmarkReport.newPrecisionEngine.avgProcessingTimeMs} ms
-                    </p>
-                    <span className="text-[9px] text-slate-500">&lt;0.3ms frame budget</span>
-                  </div>
-                </div>
-
-                {/* Comparative Table */}
-                <div className="overflow-x-auto rounded border border-[#181d26] bg-[#07090e]">
-                  <table className="w-full text-left text-[11px] font-mono">
-                    <thead className="bg-[#0e121a] text-slate-400 border-b border-[#181d26]">
-                      <tr>
-                        <th className="p-2">PIPELINE ARCHITECTURE</th>
-                        <th className="p-2">OVERALL MAE</th>
-                        <th className="p-2">FINGERTIP MAE</th>
-                        <th className="p-2">PCK @ 10px</th>
-                        <th className="p-2">PCK @ 20px</th>
-                        <th className="p-2">CONTINUITY</th>
-                        <th className="p-2">OVERHEAD</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#141822]">
-                      <tr className="text-slate-400 hover:bg-[#0c1017]">
-                        <td className="p-2 font-bold text-slate-300">{benchmarkReport.rawMediaPipe.pipelineName}</td>
-                        <td className="p-2">{benchmarkReport.rawMediaPipe.overallMAE} px</td>
-                        <td className="p-2">{benchmarkReport.rawMediaPipe.fingertipMAE} px</td>
-                        <td className="p-2">{benchmarkReport.rawMediaPipe.overallPCK10}%</td>
-                        <td className="p-2">{benchmarkReport.rawMediaPipe.overallPCK20}%</td>
-                        <td className="p-2 text-rose-400">{benchmarkReport.rawMediaPipe.continuityRate}%</td>
-                        <td className="p-2">{benchmarkReport.rawMediaPipe.avgProcessingTimeMs} ms</td>
-                      </tr>
-                      <tr className="text-slate-400 hover:bg-[#0c1017]">
-                        <td className="p-2 font-bold text-amber-300">{benchmarkReport.baselineCommit.pipelineName}</td>
-                        <td className="p-2">{benchmarkReport.baselineCommit.overallMAE} px</td>
-                        <td className="p-2">{benchmarkReport.baselineCommit.fingertipMAE} px</td>
-                        <td className="p-2">{benchmarkReport.baselineCommit.overallPCK10}%</td>
-                        <td className="p-2">{benchmarkReport.baselineCommit.overallPCK20}%</td>
-                        <td className="p-2">{benchmarkReport.baselineCommit.continuityRate}%</td>
-                        <td className="p-2">{benchmarkReport.baselineCommit.avgProcessingTimeMs} ms</td>
-                      </tr>
-                      <tr className="bg-emerald-950/20 text-emerald-300 font-bold border-t border-emerald-900/60">
-                        <td className="p-2 text-emerald-400 flex items-center gap-1.5">
-                          <Check className="w-3.5 h-3.5" />
-                          {benchmarkReport.newPrecisionEngine.pipelineName}
-                        </td>
-                        <td className="p-2">{benchmarkReport.newPrecisionEngine.overallMAE} px</td>
-                        <td className="p-2 text-white">{benchmarkReport.newPrecisionEngine.fingertipMAE} px</td>
-                        <td className="p-2">{benchmarkReport.newPrecisionEngine.overallPCK10}%</td>
-                        <td className="p-2">{benchmarkReport.newPrecisionEngine.overallPCK20}%</td>
-                        <td className="p-2 text-emerald-400">{benchmarkReport.newPrecisionEngine.continuityRate}%</td>
-                        <td className="p-2">{benchmarkReport.newPrecisionEngine.avgProcessingTimeMs} ms</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Per-Finger Breakdown */}
-                <div className="p-2.5 rounded border border-[#181d26] bg-[#07090e] space-y-1.5">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">
-                    PER-FINGER MEAN ABSOLUTE ERROR (BASELINE bd86151 vs NEW HYBRID PRECISION)
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
-                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
-                      <span className="text-slate-500">THUMB TIP (J4)</span>
-                      <p className="font-bold text-emerald-400">
-                        {benchmarkReport.newPrecisionEngine.perFingerMAE.thumb} px
-                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.thumb}px)</span>
-                      </p>
-                    </div>
-                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
-                      <span className="text-slate-500">INDEX TIP (J8)</span>
-                      <p className="font-bold text-emerald-400">
-                        {benchmarkReport.newPrecisionEngine.perFingerMAE.index} px
-                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.index}px)</span>
-                      </p>
-                    </div>
-                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
-                      <span className="text-slate-500">MIDDLE (J12)</span>
-                      <p className="font-bold text-emerald-400">
-                        {benchmarkReport.newPrecisionEngine.perFingerMAE.middle} px
-                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.middle}px)</span>
-                      </p>
-                    </div>
-                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
-                      <span className="text-slate-500">RING (J16)</span>
-                      <p className="font-bold text-emerald-400">
-                        {benchmarkReport.newPrecisionEngine.perFingerMAE.ring} px
-                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.ring}px)</span>
-                      </p>
-                    </div>
-                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
-                      <span className="text-slate-500">PINKY (J20)</span>
-                      <p className="font-bold text-emerald-400">
-                        {benchmarkReport.newPrecisionEngine.perFingerMAE.pinky} px
-                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.pinky}px)</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Alphabet Specification & Linguistic Accordion */}
-        {showReferenceDrawer && (
-          <div className="p-4 rounded border border-[#1e2430] bg-[#0c1017] space-y-3 font-mono text-xs animate-fadeIn">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1b212c] pb-2">
-              <span className="text-amber-400 font-bold tracking-wider flex items-center gap-2">
-                <Sliders className="w-4 h-4" />
-                CONVENTION DEFINITIONS: ISLRTC 2-HAND VS 1-HAND CHART
-              </span>
-              <span className="text-[11px] text-slate-400 font-sans">
-                Supplied Poster: 1-Hand ASL (Trend Ent. 2001) | National Indian Standard: 2-Hand ISLRTC
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-[11px] font-mono">
-              {Object.entries(ALPHABET_REFERENCE).map(([lettr, d]) => (
-                <div key={lettr} className="p-2 rounded border border-[#181e29] bg-[#080b10] flex flex-col justify-between">
-                  <div className="flex items-center justify-between border-b border-[#141822] pb-1">
-                    <span className="font-bold text-cyan-400 text-sm">{lettr}</span>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-[#10141d] text-slate-400">{d.standard}</span>
-                  </div>
-                  <p className="text-slate-400 text-[10px] mt-1.5 leading-snug line-clamp-3">{d.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 3. Primary Viewport & Telemetry Deck */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-          {/* Viewfinder Column (7 cols) */}
-          <div className="lg:col-span-7 space-y-2">
-            <div className="relative aspect-[4/3] sm:aspect-video w-full rounded border border-[#1e2430] bg-[#05070a] overflow-hidden flex items-center justify-center shadow-lg">
+        {/* Primary Viewport & Recognition Split Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Camera Viewport (7 Cols) */}
+          <div className="lg:col-span-7 space-y-3">
+            <div className="relative aspect-[4/3] sm:aspect-video w-full rounded-3xl border border-slate-800/90 bg-slate-900 overflow-hidden shadow-2xl flex items-center justify-center">
+              {/* Video Element */}
               <video
                 ref={videoRef}
                 playsInline
@@ -1075,6 +674,7 @@ export function LiveISLAlphabetRecognizer() {
                 }`}
               />
 
+              {/* Landmark Canvas Overlay */}
               <canvas
                 ref={canvasRef}
                 className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 pointer-events-none ${
@@ -1082,340 +682,525 @@ export function LiveISLAlphabetRecognizer() {
                 }`}
               />
 
-              {/* Standby Prompt */}
+              {/* Viewport Inactive Welcome Hero State */}
               {!isCameraActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#080b10]">
-                  <div className="w-12 h-12 rounded border border-[#232b3b] bg-[#0f131a] flex items-center justify-center text-cyan-400">
-                    <Camera className="w-6 h-6" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-5 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">
+                    <Camera className="w-8 h-8" />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-mono font-bold tracking-wider text-slate-200">OPTICAL TRACKING OFFLINE</p>
-                    <p className="text-xs text-slate-400 font-sans max-w-sm">
-                      Initialize camera sensor to engage persistent 21-joint tracking with adaptive One Euro filtering.
+
+                  <div className="space-y-2 max-w-md">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                      Real-Time Sign Language
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                      Show your hand signs to the camera. The AI tracks 21 joints, recognizes letters, and speaks your sentences.
                     </p>
                   </div>
+
                   <button
                     onClick={startCamera}
                     disabled={isInitializing}
-                    className="px-6 py-2.5 rounded border border-cyan-500/80 bg-cyan-600 hover:bg-cyan-500 text-black font-mono font-bold text-xs tracking-wider uppercase transition-colors cursor-pointer flex items-center gap-2"
+                    className="px-7 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isInitializing ? (
                       <>
                         <Activity className="w-4 h-4 animate-spin" />
-                        <span>INITIALIZING ENGINE...</span>
+                        <span>Initializing AI Engine...</span>
                       </>
                     ) : (
                       <>
-                        <Camera className="w-4 h-4" />
-                        <span>START CAMERA</span>
+                        <Play className="w-4 h-4 fill-white" />
+                        <span>Start Camera</span>
                       </>
                     )}
                   </button>
-                  <p className="text-[10px] text-slate-500 font-mono">
-                    MULTI-STAGE: MEDIAPIPE + PERSISTENT TRACKING + 1€ FILTER + NEURAL MLP
-                  </p>
+
+                  {/* 3 Quick Tips */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 max-w-sm w-full text-slate-400 text-[11px]">
+                    <div className="text-center p-1">
+                      <span className="block font-medium text-slate-300">1-2 Feet</span>
+                      <span>Distance</span>
+                    </div>
+                    <div className="text-center p-1 border-x border-slate-800/80">
+                      <span className="block font-medium text-slate-300">Clear Light</span>
+                      <span>Environment</span>
+                    </div>
+                    <div className="text-center p-1">
+                      <span className="block font-medium text-slate-300">Hold Steady</span>
+                      <span>To Auto-Type</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Viewport Top Telemetry HUD */}
+              {/* Viewport Top Floating Controls (Active State) */}
               {isCameraActive && (
-                <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono pointer-events-none select-none">
-                  <div className="flex items-center gap-1.5 bg-[#0a0d13]/90 px-2 py-1 rounded border border-[#1b222d] backdrop-blur text-slate-300">
-                    <span className="text-emerald-400 font-bold">{fps} FPS</span>
-                    <span className="text-slate-600">|</span>
-                    <span className="text-cyan-400 font-bold">{latencyMs} ms</span>
-                    <span className="text-slate-600">|</span>
-                    <span className="text-amber-400">{trackedHandCount} HAND{trackedHandCount === 1 ? '' : 'S'}</span>
+                <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none select-none">
+                  <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 shadow-md text-slate-300">
+                    <span className="text-emerald-400 font-semibold">{fps} FPS</span>
+                    <span className="text-slate-600">•</span>
+                    <span className="text-cyan-400">{latencyMs}ms</span>
+                    <span className="text-slate-600">•</span>
+                    <span className="text-slate-300">{trackedHandCount} {trackedHandCount === 1 ? 'Hand' : 'Hands'}</span>
                   </div>
 
-                  <div className="pointer-events-auto flex items-center gap-1.5">
+                  <div className="pointer-events-auto flex items-center gap-2">
+                    {/* Flip Front/Rear Camera (Vital for Mobile) */}
                     <button
                       onClick={toggleFacingMode}
-                      className="p-1 rounded bg-[#0a0d13]/90 border border-[#1b222d] text-slate-300 hover:text-white transition-colors cursor-pointer"
-                      title="Flip Sensor"
+                      className="p-2 rounded-full bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 text-slate-200 transition-all active:scale-90 cursor-pointer shadow-md"
+                      title="Flip Camera"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      <RotateCcw className="w-4 h-4" />
                     </button>
+
+                    {/* Stop Camera Button */}
                     <button
                       onClick={stopCamera}
-                      className="px-2.5 py-1 rounded border border-rose-800 bg-rose-600 hover:bg-rose-500 text-white font-mono text-[10px] font-bold tracking-wider cursor-pointer flex items-center gap-1"
+                      className="px-3.5 py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 backdrop-blur-md text-xs font-semibold tracking-wide transition-all active:scale-95 cursor-pointer shadow-md flex items-center gap-1.5"
                     >
-                      <CameraOff className="w-3 h-3" />
-                      <span>TERMINATE</span>
+                      <CameraOff className="w-3.5 h-3.5" />
+                      <span>Stop</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Viewport Bottom Status Bar */}
+              {/* Viewport Bottom Floating Status Prompt */}
               {isCameraActive && (
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono pointer-events-none bg-[#0a0d13]/85 px-2.5 py-1 rounded border border-[#19202a]">
-                  <div className="flex items-center gap-2 truncate">
-                    <span
-                      className={`px-1.5 py-0.2 rounded font-bold text-[9px] ${
-                        trackingReport.status === 'TRACKING'
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                          : trackingReport.status === 'TRACKING DEGRADED'
-                          ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
-                    >
-                      {trackingReport.status}
-                    </span>
-                    <span className="text-slate-300 truncate">{statusMessage}</span>
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">
+                  <div className="bg-slate-900/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 text-slate-200 flex items-center gap-2 shadow-md">
+                    <span className={`w-2 h-2 rounded-full ${activeSign ? 'bg-emerald-400 animate-ping' : 'bg-cyan-400'}`} />
+                    <span className="font-medium">{statusMessage}</span>
                   </div>
-                  <span className="text-cyan-400 font-bold">{trackingReport.qualityScore}% Q</span>
                 </div>
               )}
             </div>
 
-            {/* Mode & Telemetry Status Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded border border-[#171c26] bg-[#0c0f16] text-xs font-mono">
-              <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                CONVENTION:
-              </span>
-              <div className="flex items-center gap-1">
-                {(['auto', 'islrtc_bimanual', 'single_hand_chart'] as AlphabetConvention[]).map((m) => (
+            {/* Quick Sign Convention Selector */}
+            <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur text-xs">
+              <span className="text-slate-400 font-medium">Recognition Mode:</span>
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                {(['auto', 'single_hand_chart', 'islrtc_bimanual'] as AlphabetConvention[]).map((m) => (
                   <button
                     key={m}
                     onClick={() => setConvention(m)}
-                    className={`px-2 py-0.5 rounded text-[10px] tracking-wider uppercase transition-colors cursor-pointer ${
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       convention === m
-                        ? 'border border-cyan-800 bg-cyan-950/80 text-cyan-300 font-bold'
-                        : 'border border-[#1a202c] bg-[#10141d] text-slate-400 hover:text-slate-200'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    {m === 'auto' ? 'Auto-Detect' : m === 'islrtc_bimanual' ? 'ISLRTC Dual' : '1-Hand Chart'}
+                    {m === 'auto' ? 'Auto Detect' : m === 'single_hand_chart' ? '1-Hand' : '2-Hand (ISLRTC)'}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Telemetry & Composition Column (5 cols) */}
-          <div className="lg:col-span-5 space-y-3 font-mono">
-            {/* 1. Dedicated Tracking Quality Gauge */}
-            <div className="p-3.5 rounded border border-[#1e2430] bg-[#0d1017] space-y-2.5 text-xs">
-              <div className="flex items-center justify-between border-b border-[#161c26] pb-1.5">
-                <span className="text-slate-400 tracking-wider uppercase flex items-center gap-1.5 font-bold">
-                  <Gauge className="w-3.5 h-3.5 text-cyan-400" />
-                  OPTICAL TRACKING QUALITY
+          {/* Right Column: Hero Recognition & Text Composer (5 Cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* 1. Detected Letter Hero Card */}
+            <div className="p-5 rounded-3xl border border-slate-800/80 bg-slate-900/70 backdrop-blur-xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 text-xs">
+                <span className="text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  Detected Sign
                 </span>
-                <span className="text-emerald-400 font-bold">{trackingReport.qualityScore}% HEALTH</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-[10px]">
-                <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
-                  <span className="text-slate-500">STABILITY</span>
-                  <p className="font-bold text-slate-200">{trackingReport.stabilityScore}%</p>
-                </div>
-                <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
-                  <span className="text-slate-500">FRAMING</span>
-                  <p className="font-bold text-cyan-400">{trackingReport.framing}</p>
-                </div>
-                <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
-                  <span className="text-slate-500">JITTER VAR</span>
-                  <p className="font-bold text-amber-400">{trackingReport.jitterVariance}</p>
-                </div>
-              </div>
-
-              {/* Extended Diagnostic Telemetry Deck */}
-              {showDiagnosticHUD && (
-                <div className="space-y-2 pt-2 border-t border-[#161c26] text-[10px]">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
-                      <span className="text-slate-500">BIOMECH</span>
-                      <p className="font-bold text-emerald-400">{trackingReport.anatomicalIntegrityScore}%</p>
-                    </div>
-                    <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
-                      <span className="text-slate-500">ID SWAPS</span>
-                      <p className="font-bold text-slate-300">{trackingReport.identitySwitchesCount}</p>
-                    </div>
-                    <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
-                      <span className="text-slate-500">REACQUIRED</span>
-                      <p className="font-bold text-cyan-400">{trackingReport.reacquisitionsCount}</p>
-                    </div>
-                  </div>
-
-                  {/* Per-Finger Telemetry */}
-                  {trackingReport.perFingerTelemetry.length > 0 && (
-                    <div className="space-y-1 pt-1">
-                      <span className="text-[9px] text-slate-500 uppercase font-bold">PER-FINGER STABILITY</span>
-                      <div className="space-y-1">
-                        {trackingReport.perFingerTelemetry.map((f) => (
-                          <div key={f.name} className="flex items-center justify-between gap-2">
-                            <span className="text-[9px] text-slate-400 w-12">{f.name}</span>
-                            <div className="flex-1 h-1.5 rounded-full bg-[#121620] overflow-hidden">
-                              <div
-                                className={`h-full transition-all duration-100 ${
-                                  f.stabilityScore >= 70
-                                    ? 'bg-emerald-400'
-                                    : f.stabilityScore >= 40
-                                    ? 'bg-cyan-400'
-                                    : 'bg-amber-400'
-                                }`}
-                                style={{ width: `${f.stabilityScore}%` }}
-                              />
-                            </div>
-                            <span className="text-[9px] text-slate-400 w-6 text-right">{f.stabilityScore}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Neural Recognition Readout Panel */}
-            <div className="p-3.5 rounded border border-[#1e2430] bg-[#0d1017] space-y-3">
-              <div className="flex items-center justify-between border-b border-[#161c26] pb-1.5 text-xs">
-                <span className="text-slate-400 tracking-wider uppercase flex items-center gap-1.5 font-bold">
-                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                  CLASSIFIER OUTPUT
-                </span>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  CONF: {Math.round((currentResult?.confidence ?? 0) * 100)}%
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  confidencePct >= 75
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : confidencePct > 0
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    : 'bg-slate-800 text-slate-500'
+                }`}>
+                  {confidencePct > 0 ? `${confidencePct}% Match` : 'No Gesture'}
                 </span>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded border border-[#222b3b] bg-[#07090e] flex items-center justify-center">
+              {/* Hero Letter Display Box */}
+              <div className="flex items-center gap-5">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 border border-slate-700/80 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
                   {activeSign ? (
-                    <span className="text-4xl font-black text-cyan-400 tracking-widest animate-scaleUp">
+                    <span className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 via-indigo-400 to-emerald-400 animate-scaleUp">
                       {activeSign}
                     </span>
                   ) : (
-                    <span className="text-2xl text-slate-700">--</span>
+                    <span className="text-3xl font-light text-slate-700">--</span>
+                  )}
+                  {activeSign && (
+                    <div className="absolute bottom-1 right-2 text-[10px] text-slate-500 font-mono">
+                      {confidencePct}%
+                    </div>
                   )}
                 </div>
 
                 <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-200">
-                      {activeSign ? `LETTER: ${activeSign}` : 'NO TARGET GESTURE'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 font-sans leading-snug">
+                  <h3 className="text-lg font-bold text-white">
+                    {activeSign ? `Letter ${activeSign}` : 'Awaiting Sign'}
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
                     {activeSign && ALPHABET_REFERENCE[activeSign]
                       ? ALPHABET_REFERENCE[activeSign].desc
-                      : 'Position hand within camera field to trigger recognition.'}
+                      : 'Show an ISL or single-hand alphabet sign to the camera to detect.'}
                   </p>
                 </div>
               </div>
 
-              {/* Lock Progress Meter */}
-              <div className="space-y-1 pt-1 text-[11px]">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span>TEMPORAL LOCK METER</span>
-                  <span className="text-cyan-400 font-bold">{stabilityProgress}%</span>
+              {/* Auto-Accept Progress Bar */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Hold steady to auto-type</span>
+                  <span className="font-semibold text-cyan-400">{stabilityProgress}%</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-[#121620] overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
                   <div
-                    className="h-full bg-cyan-400 transition-all duration-75"
+                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-100 rounded-full"
                     style={{ width: `${stabilityProgress}%` }}
                   />
                 </div>
               </div>
 
+              {/* Force Accept Button */}
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[10px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {stableLockedLetter ? (
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      ACCEPTED IN TERMINAL
+                    <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Letter accepted into text!
                     </span>
                   ) : (
-                    'HOLD STEADY TO AUTO-ACCEPT'
+                    'Holds for ~0.8s'
                   )}
                 </span>
 
                 <button
                   onClick={handleManualAddLetter}
                   disabled={!activeSign}
-                  className="px-2.5 py-1 rounded border border-[#232b3b] bg-[#121722] hover:bg-[#181f2e] disabled:opacity-40 text-cyan-400 text-[10px] font-bold uppercase transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 disabled:opacity-30 text-indigo-300 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
                 >
-                  + Force Accept
+                  + Add Now
                 </button>
               </div>
             </div>
 
-            {/* 3. Terminal Composition Deck */}
-            <div className="p-3.5 rounded border border-[#1e2430] bg-[#0d1017] space-y-2.5 font-mono">
-              <div className="flex items-center justify-between border-b border-[#161c26] pb-1.5 text-xs">
-                <span className="text-slate-400 tracking-wider uppercase flex items-center gap-1.5 font-bold">
-                  <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-                  OUTPUT TERMINAL
+            {/* 2. Text Composer & Sentence Builder */}
+            <div className="p-5 rounded-3xl border border-slate-800/80 bg-slate-900/70 backdrop-blur-xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 text-xs">
+                <span className="text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-emerald-400" />
+                  Composed Text
                 </span>
-                <span className="text-[11px] text-slate-500">{textBuffer.length} CHARS</span>
-              </div>
-
-              <div className="min-h-[64px] p-2.5 rounded border border-[#1a202c] bg-[#06080c] text-base tracking-widest text-emerald-300 break-words flex items-center justify-between select-all">
-                <span>
-                  {textBuffer || <span className="text-slate-600 text-xs tracking-normal">Awaiting input...</span>}
-                  <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse align-middle" />
+                <span className="text-slate-500 text-xs">
+                  {textBuffer.length} {textBuffer.length === 1 ? 'char' : 'chars'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-4 gap-1.5 text-[11px]">
+              {/* Text Box Display */}
+              <div className="min-h-[80px] p-4 rounded-2xl bg-slate-950/90 border border-slate-800 text-lg font-medium tracking-wide text-white break-words select-all shadow-inner">
+                {textBuffer ? (
+                  <span>
+                    {textBuffer}
+                    <span className="inline-block w-2 h-5 ml-1 bg-cyan-400 animate-pulse align-middle" />
+                  </span>
+                ) : (
+                  <span className="text-slate-600 text-sm font-normal">
+                    Recognized letters will form words here...
+                  </span>
+                )}
+              </div>
+
+              {/* Mobile-Friendly Tactile Controls */}
+              <div className="grid grid-cols-4 gap-2 text-xs">
                 <button
                   onClick={handleSpace}
-                  className="py-1.5 rounded border border-[#202735] bg-[#11151f] hover:bg-[#171d2b] text-slate-200 font-bold uppercase transition-colors cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 rounded-xl border border-slate-700/80 bg-slate-800/90 hover:bg-slate-700 text-white font-semibold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  <Space className="w-3 h-3 text-cyan-400" />
+                  <Space className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Space</span>
                 </button>
 
                 <button
                   onClick={handleBackspace}
-                  className="py-1.5 rounded border border-[#202735] bg-[#11151f] hover:bg-[#171d2b] text-slate-200 font-bold uppercase transition-colors cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 rounded-xl border border-slate-700/80 bg-slate-800/90 hover:bg-slate-700 text-white font-semibold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  <Delete className="w-3 h-3 text-amber-400" />
+                  <Delete className="w-3.5 h-3.5 text-amber-400" />
                   <span>Del</span>
                 </button>
 
                 <button
                   onClick={handleClear}
-                  className="py-1.5 rounded border border-[#202735] bg-[#11151f] hover:bg-[#171d2b] text-slate-200 font-bold uppercase transition-colors cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 rounded-xl border border-slate-700/80 bg-slate-800/90 hover:bg-slate-700 text-rose-300 font-semibold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  <RotateCcw className="w-3 h-3 text-rose-400" />
+                  <RotateCcw className="w-3.5 h-3.5" />
                   <span>Clear</span>
                 </button>
 
                 <button
                   onClick={handleSpeakText}
                   disabled={!textBuffer.trim()}
-                  className="py-1.5 rounded border border-cyan-800 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-black font-bold uppercase transition-colors cursor-pointer flex items-center justify-center gap-1"
+                  className="py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-40 text-white font-bold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20"
                 >
-                  <Volume2 className="w-3 h-3" />
+                  <Volume2 className="w-3.5 h-3.5" />
                   <span>Speak</span>
                 </button>
               </div>
 
+              {/* Copy Full Sentence Button */}
               {textBuffer && (
                 <button
                   onClick={handleCopy}
-                  className="w-full py-1.5 rounded border border-[#1b222e] bg-[#0a0d13] hover:bg-[#111620] text-slate-300 text-[11px] font-bold uppercase transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl border border-slate-700/80 bg-slate-800/60 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 shadow-sm"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                  <span>{copied ? 'BUFFER COPIED' : 'COPY BUFFER TO CLIPBOARD'}</span>
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+                  <span>{copied ? 'Copied to Clipboard!' : 'Copy Text'}</span>
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* 4. Scientific Footnote */}
-        <footer className="pt-2.5 border-t border-[#161c26] text-[10px] font-mono text-slate-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
-          <span>
-            SIGNBRIDGE • MULTI-STAGE OPTICAL TRACKING ARCHITECTURE
-          </span>
-          <span className="text-slate-600">
-            One Euro Adaptive Filter • Persistent Track Association • Invariant Neural Classification
-          </span>
-        </footer>
+        {/* 3. Collapsible Diagnostics & Science Fair Lab Modal/Section */}
+        {showDiagnostics && (
+          <div className="p-5 sm:p-6 rounded-3xl border border-indigo-500/30 bg-slate-900/90 backdrop-blur-xl shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm tracking-wide">
+                <Gauge className="w-5 h-5" />
+                <span>DIAGNOSTICS & SCIENCE FAIR BENCHMARK LAB</span>
+              </div>
+              <button
+                onClick={() => setShowDiagnostics(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Calibration & 10s Evaluation Protocol */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200">10-Second Physical Device Evaluation</h4>
+                  <p className="text-xs text-slate-400">Record 10 seconds of holding a sign to test camera latency, accuracy, and jitter.</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={calibrationLetter}
+                    onChange={(e) => setCalibrationLetter(e.target.value)}
+                    disabled={isCalibrating}
+                    className="bg-slate-950 border border-slate-700 text-cyan-300 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                  >
+                    {Object.keys(ALPHABET_REFERENCE).map((l) => (
+                      <option key={l} value={l}>
+                        Sign: {l}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => startCalibrationSession(calibrationLetter)}
+                    disabled={isCalibrating || !isCameraActive}
+                    className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-black" />
+                    <span>{isCalibrating ? 'Recording (10s)...' : 'Start 10s Test'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Calibration Results Cards */}
+              {calibrationResults && (
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-2">
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-[10px] text-slate-400">Target</span>
+                    <p className="text-base font-bold text-cyan-400">{calibrationResults.targetLetter}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-[10px] text-slate-400">Accuracy</span>
+                    <p className="text-base font-bold text-emerald-400">{calibrationResults.accuracyRate}%</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-[10px] text-slate-400">Continuity</span>
+                    <p className="text-base font-bold text-slate-200">{calibrationResults.continuityRate}%</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-[10px] text-slate-400">FPS</span>
+                    <p className="text-base font-bold text-slate-200">{calibrationResults.avgFps}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-[10px] text-slate-400">Latency</span>
+                    <p className="text-base font-bold text-slate-200">{calibrationResults.avgLatencyMs}ms</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                    <span className="text-[10px] text-slate-400">Jitter</span>
+                    <p className="text-base font-bold text-amber-400">{calibrationResults.avgJitter}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 90-Frame Benchmark Suite */}
+            <div className="space-y-3 pt-4 border-t border-slate-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200">Comparative Tracking Benchmark (90 Frames)</h4>
+                  <p className="text-xs text-slate-400">Evaluates raw MediaPipe vs Baseline bd86151 vs New Precision Engine.</p>
+                </div>
+
+                <button
+                  onClick={runBenchmarkSuite}
+                  disabled={isRunningBenchmark}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  {isRunningBenchmark ? (
+                    <>
+                      <Activity className="w-3.5 h-3.5 animate-spin" />
+                      <span>Running 90-frame test...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FlaskConical className="w-3.5 h-3.5" />
+                      <span>Run Benchmark</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Comparative Table */}
+              {benchmarkReport && (
+                <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950 text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="p-2.5">Pipeline</th>
+                        <th className="p-2.5">Overall MAE</th>
+                        <th className="p-2.5">Fingertip MAE</th>
+                        <th className="p-2.5">PCK@10px</th>
+                        <th className="p-2.5">Continuity</th>
+                        <th className="p-2.5">Latency</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      <tr>
+                        <td className="p-2.5 font-medium">{benchmarkReport.rawMediaPipe.pipelineName}</td>
+                        <td className="p-2.5">{benchmarkReport.rawMediaPipe.overallMAE}px</td>
+                        <td className="p-2.5">{benchmarkReport.rawMediaPipe.fingertipMAE}px</td>
+                        <td className="p-2.5">{benchmarkReport.rawMediaPipe.overallPCK10}%</td>
+                        <td className="p-2.5 text-rose-400">{benchmarkReport.rawMediaPipe.continuityRate}%</td>
+                        <td className="p-2.5">{benchmarkReport.rawMediaPipe.avgProcessingTimeMs}ms</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2.5 font-medium text-amber-300">{benchmarkReport.baselineCommit.pipelineName}</td>
+                        <td className="p-2.5">{benchmarkReport.baselineCommit.overallMAE}px</td>
+                        <td className="p-2.5">{benchmarkReport.baselineCommit.fingertipMAE}px</td>
+                        <td className="p-2.5">{benchmarkReport.baselineCommit.overallPCK10}%</td>
+                        <td className="p-2.5">{benchmarkReport.baselineCommit.continuityRate}%</td>
+                        <td className="p-2.5">{benchmarkReport.baselineCommit.avgProcessingTimeMs}ms</td>
+                      </tr>
+                      <tr className="bg-emerald-950/20 font-bold text-emerald-300">
+                        <td className="p-2.5 text-emerald-400 flex items-center gap-1.5">
+                          <Check className="w-4 h-4" />
+                          {benchmarkReport.newPrecisionEngine.pipelineName}
+                        </td>
+                        <td className="p-2.5">{benchmarkReport.newPrecisionEngine.overallMAE}px</td>
+                        <td className="p-2.5 text-white">{benchmarkReport.newPrecisionEngine.fingertipMAE}px</td>
+                        <td className="p-2.5">{benchmarkReport.newPrecisionEngine.overallPCK10}%</td>
+                        <td className="p-2.5 text-emerald-400">{benchmarkReport.newPrecisionEngine.continuityRate}%</td>
+                        <td className="p-2.5">{benchmarkReport.newPrecisionEngine.avgProcessingTimeMs}ms</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Alphabet Reference Guide Modal */}
+        {showGuideModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Indian Sign Language Alphabet Guide</h3>
+                    <p className="text-xs text-slate-400">Learn the exact hand shape for each letter</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowGuideModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filter tabs */}
+              <div className="px-5 py-3 bg-slate-950/50 border-b border-slate-800 flex items-center gap-2">
+                <button
+                  onClick={() => setGuideFilter('all')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+                    guideFilter === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All (A-Z)
+                </button>
+                <button
+                  onClick={() => setGuideFilter('single')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+                    guideFilter === 'single' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Single-Hand Signs
+                </button>
+                <button
+                  onClick={() => setGuideFilter('dual')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+                    guideFilter === 'dual' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Two-Hand (ISLRTC)
+                </button>
+              </div>
+
+              {/* Alphabet Grid */}
+              <div className="p-5 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {filteredGuide.map(([letter, info]) => (
+                  <div
+                    key={letter}
+                    className="p-3.5 rounded-2xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all flex flex-col justify-between space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-black text-cyan-400">{letter}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium border border-slate-700">
+                        {info.standard}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{info.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* 5. Minimal Modern Footer */}
+      <footer className="mt-auto border-t border-slate-900 bg-slate-950 px-4 py-4 text-center text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>SIGNBRIDGE • Real-Time Indian Sign Language AI</span>
+          <span className="text-slate-600 text-[11px]">Powered by MediaPipe & Neural Biomechanical Classification</span>
+        </div>
+      </footer>
     </div>
   );
 }
+
+export default LiveISLAlphabetRecognizer;
