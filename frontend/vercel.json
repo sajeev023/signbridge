@@ -6,6 +6,10 @@
       "destination": "/api/health"
     },
     {
+      "source": "/api/alphabet/info",
+      "destination": "/api/alphabet-info"
+    },
+    {
       "source": "/api/vocabulary",
       "destination": "/api/vocabulary"
     },
