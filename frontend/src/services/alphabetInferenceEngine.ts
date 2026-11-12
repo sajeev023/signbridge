@@ -52,77 +52,167 @@ class AlphabetInferenceEngine {
   }
 
   /**
-   * Extracts 28 invariant features for single-hand manual alphabet.
+   * Extracts 42 continuous, scale-, translation-, and 3D rotation-invariant
+   * biomechanical features from 21 MediaPipe hand landmarks.
    */
   public extractSingleHandFeatures(hand: Point3D[]): number[] {
-    const feat = new Array<number>(28).fill(0);
+    const feat = new Array<number>(42).fill(0);
     if (!hand || hand.length < 21) return feat;
 
-    const s = Math.max(0.04, this.dist3D(hand[0], hand[9]));
+    const wrist = hand[0];
+    const midMCP = hand[9];
+    const idxMCP = hand[5];
+    const pkyMCP = hand[17];
 
-    // 1. Extensions
-    feat[0] = (this.dist3D(hand[4], hand[0]) - this.dist3D(hand[2], hand[0])) / s;
-    feat[1] = (this.dist3D(hand[8], hand[0]) - this.dist3D(hand[6], hand[0])) / s;
-    feat[2] = (this.dist3D(hand[12], hand[0]) - this.dist3D(hand[10], hand[0])) / s;
-    feat[3] = (this.dist3D(hand[16], hand[0]) - this.dist3D(hand[14], hand[0])) / s;
-    feat[4] = (this.dist3D(hand[20], hand[0]) - this.dist3D(hand[18], hand[0])) / s;
+    const scale = Math.max(0.035, this.dist3D(midMCP, wrist));
 
-    // 2. Tip to wrist distances
-    feat[5] = this.dist3D(hand[4], hand[0]) / s;
-    feat[6] = this.dist3D(hand[8], hand[0]) / s;
-    feat[7] = this.dist3D(hand[12], hand[0]) / s;
-    feat[8] = this.dist3D(hand[16], hand[0]) / s;
-    feat[9] = this.dist3D(hand[20], hand[0]) / s;
+    // Longitudinal palm axis (wrist to middle MCP)
+    const vecY: [number, number, number] = [
+      (midMCP.x - wrist.x) / scale,
+      (midMCP.y - wrist.y) / scale,
+      ((midMCP.z ?? 0) - (wrist.z ?? 0)) / scale
+    ];
 
-    // 3. Curls
-    feat[10] = 0.5;
-    feat[11] = Math.max(0, 1.0 - this.dist3D(hand[8], hand[5]) / s);
-    feat[12] = Math.max(0, 1.0 - this.dist3D(hand[12], hand[9]) / s);
-    feat[13] = Math.max(0, 1.0 - this.dist3D(hand[16], hand[13]) / s);
-    feat[14] = Math.max(0, 1.0 - this.dist3D(hand[20], hand[17]) / s);
+    // Palm normal Z: (idxMCP - wrist) x (pkyMCP - wrist)
+    const vIdx: [number, number, number] = [
+      idxMCP.x - wrist.x,
+      idxMCP.y - wrist.y,
+      (idxMCP.z ?? 0) - (wrist.z ?? 0)
+    ];
+    const vPky: [number, number, number] = [
+      pkyMCP.x - wrist.x,
+      pkyMCP.y - wrist.y,
+      (pkyMCP.z ?? 0) - (wrist.z ?? 0)
+    ];
 
-    // 4. Spreads
-    feat[15] = this.dist3D(hand[4], hand[8]) / s;
-    feat[16] = this.dist3D(hand[8], hand[12]) / s;
-    feat[17] = this.dist3D(hand[12], hand[16]) / s;
-    feat[18] = this.dist3D(hand[16], hand[20]) / s;
+    const normX = vIdx[1] * vPky[2] - vIdx[2] * vPky[1];
+    const normY = vIdx[2] * vPky[0] - vIdx[0] * vPky[2];
+    const normZ = vIdx[0] * vPky[1] - vIdx[1] * vPky[0];
+    const normMag = Math.sqrt(normX * normX + normY * normY + normZ * normZ);
+    const vecZ: [number, number, number] = normMag > 1e-6
+      ? [normX / normMag, normY / normMag, normZ / normMag]
+      : [0, 0, 1];
 
-    // 5. Handshape Invariants
-    feat[19] = feat[15]; // loop thumb-index
-    feat[20] = this.dist3D(hand[4], hand[12]) / s; // loop thumb-mid
+    // Lateral axis X: vecY x vecZ
+    const crossX_x = vecY[1] * vecZ[2] - vecY[2] * vecZ[1];
+    const crossX_y = vecY[2] * vecZ[0] - vecY[0] * vecZ[2];
+    const crossX_z = vecY[0] * vecZ[1] - vecY[1] * vecZ[0];
+    const crossXMag = Math.sqrt(crossX_x * crossX_x + crossX_y * crossX_y + crossX_z * crossX_z);
+    const vecX: [number, number, number] = crossXMag > 1e-6
+      ? [crossX_x / crossXMag, crossX_y / crossXMag, crossX_z / crossXMag]
+      : [1, 0, 0];
 
-    // L-angle
-    const thumbVec: [number, number] = [hand[4].x - hand[2].x, hand[4].y - hand[2].y];
-    const indexVec: [number, number] = [hand[8].x - hand[5].x, hand[8].y - hand[5].y];
-    const dot = Math.abs(this.cosineAngle(thumbVec, indexVec));
-    feat[21] = feat[15] > 0.6 && feat[1] > 0.4 ? 1.0 - dot : 0.0;
+    // Transform landmarks to local canonical coordinates
+    const localPts: Array<[number, number, number]> = new Array(21);
+    for (let i = 0; i < 21; i++) {
+      const rx = (hand[i].x - wrist.x) / scale;
+      const ry = (hand[i].y - wrist.y) / scale;
+      const rz = ((hand[i].z ?? 0) - (wrist.z ?? 0)) / scale;
+      localPts[i] = [
+        rx * vecX[0] + ry * vecX[1] + rz * vecX[2],
+        rx * vecY[0] + ry * vecY[1] + rz * vecY[2],
+        rx * vecZ[0] + ry * vecZ[1] + rz * vecZ[2]
+      ];
+    }
 
-    // Y-span (thumb tip to pinky tip)
-    feat[22] = this.dist3D(hand[4], hand[20]) / s;
+    const tips = [4, 8, 12, 16, 20];
+    const mcps = [2, 5, 9, 13, 17];
 
-    // Crossed index-middle (R)
-    feat[23] = feat[1] > 0.5 && feat[2] > 0.5 && feat[16] < 0.25 ? 0.9 : 0.0;
+    const palmCenterX = (hand[0].x + hand[5].x + hand[9].x + hand[13].x + hand[17].x) / 5;
+    const palmCenterY = (hand[0].y + hand[5].y + hand[9].y + hand[13].y + hand[17].y) / 5;
+    const palmCenterZ = ((hand[0].z ?? 0) + (hand[5].z ?? 0) + (hand[9].z ?? 0) + (hand[13].z ?? 0) + (hand[17].z ?? 0)) / 5;
+    const palmCenter: Point3D = { x: palmCenterX, y: palmCenterY, z: palmCenterZ };
 
-    // Fist compactness
-    const avgTipDist =
-      (this.dist3D(hand[4], hand[9]) +
-        this.dist3D(hand[8], hand[9]) +
-        this.dist3D(hand[12], hand[9]) +
-        this.dist3D(hand[16], hand[9]) +
-        this.dist3D(hand[20], hand[9])) /
-      (5 * s);
-    feat[24] = Math.max(0, 1.2 - avgTipDist);
+    // 0-4: 5 Finger Extensions
+    for (let i = 0; i < 5; i++) {
+      const tipDist = this.dist3D(hand[tips[i]], wrist);
+      const mcpDist = this.dist3D(hand[mcps[i]], wrist);
+      feat[i] = (tipDist - mcpDist) / scale;
+    }
 
-    // Horizontal alignment (G, H)
-    const idxDx = Math.abs(hand[8].x - hand[5].x);
-    const idxDy = Math.abs(hand[8].y - hand[5].y);
-    feat[25] = idxDx > 1.5 * idxDy ? 0.9 : 0.1;
+    // 5-9: 5 Fingertip to Palm Center Distances
+    for (let i = 0; i < 5; i++) {
+      feat[5 + i] = this.dist3D(hand[tips[i]], palmCenter) / scale;
+    }
 
-    // C-curve metric
-    feat[26] = feat[15] > 0.3 && feat[11] > 0.2 && feat[12] > 0.2 ? 0.92 : 0.1;
+    // 10-14: 5 Finger Curls
+    for (let i = 0; i < 5; i++) {
+      feat[10 + i] = this.dist3D(hand[tips[i]], hand[mcps[i]]) / scale;
+    }
 
-    // U-parallel metric
-    feat[27] = feat[1] > 0.7 && feat[2] > 0.7 && feat[16] < 0.15 ? 0.94 : 0.1;
+    const cosAngle3D = (u: [number, number, number], v: [number, number, number]): number => {
+      const dot = u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+      const magU = Math.sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
+      const magV = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+      if (magU < 1e-6 || magV < 1e-6) return 0;
+      return Math.max(-1, Math.min(1, dot / (magU * magV)));
+    };
+
+    const vThumb: [number, number, number] = [hand[4].x - hand[2].x, hand[4].y - hand[2].y, (hand[4].z ?? 0) - (hand[2].z ?? 0)];
+    const vIndex: [number, number, number] = [hand[8].x - hand[5].x, hand[8].y - hand[5].y, (hand[8].z ?? 0) - (hand[5].z ?? 0)];
+    const vMid:   [number, number, number] = [hand[12].x - hand[9].x, hand[12].y - hand[9].y, (hand[12].z ?? 0) - (hand[9].z ?? 0)];
+    const vRing:  [number, number, number] = [hand[16].x - hand[13].x, hand[16].y - hand[13].y, (hand[16].z ?? 0) - (hand[13].z ?? 0)];
+    const vPinky: [number, number, number] = [hand[20].x - hand[17].x, hand[20].y - hand[17].y, (hand[20].z ?? 0) - (hand[17].z ?? 0)];
+
+    // 15-18: Inter-finger Spread Cosines
+    feat[15] = cosAngle3D(vThumb, vIndex);
+    feat[16] = cosAngle3D(vIndex, vMid);
+    feat[17] = cosAngle3D(vMid, vRing);
+    feat[18] = cosAngle3D(vRing, vPinky);
+
+    // 19-23: Inter-fingertip Distances
+    feat[19] = this.dist3D(hand[4], hand[8]) / scale;
+    feat[20] = this.dist3D(hand[4], hand[12]) / scale;
+    feat[21] = this.dist3D(hand[4], hand[20]) / scale;
+    feat[22] = this.dist3D(hand[8], hand[12]) / scale;
+    feat[23] = this.dist3D(hand[12], hand[16]) / scale;
+
+    // 24-28: Canonical 3D Thumb Coordinates & Opposition
+    feat[24] = localPts[4][0];
+    feat[25] = localPts[4][1];
+    feat[26] = localPts[4][2];
+    feat[27] = this.dist3D(hand[4], hand[5]) / scale;
+    feat[28] = this.dist3D(hand[4], hand[13]) / scale;
+
+    // 29-31: Relative Finger Crossing Metrics
+    const deltaXTips = localPts[8][0] - localPts[12][0];
+    const deltaXMcps = localPts[5][0] - localPts[9][0];
+    feat[29] = deltaXTips / (Math.abs(deltaXMcps) > 1e-4 ? deltaXMcps : 1);
+    feat[30] = localPts[8][2] - localPts[12][2];
+    const cross2D = vIndex[0] * vMid[1] - vIndex[1] * vMid[0];
+    feat[31] = Math.abs(cross2D) > 1e-5 ? Math.sign(cross2D) : 0;
+
+    // 32-34: Canonical Index Direction Vectors
+    const idxDirX = localPts[8][0] - localPts[5][0];
+    const idxDirY = localPts[8][1] - localPts[5][1];
+    const idxDirZ = localPts[8][2] - localPts[5][2];
+    const idxMag = Math.sqrt(idxDirX * idxDirX + idxDirY * idxDirY + idxDirZ * idxDirZ);
+    if (idxMag > 1e-6) {
+      feat[32] = idxDirX / idxMag;
+      feat[33] = idxDirY / idxMag;
+      feat[34] = idxDirZ / idxMag;
+    }
+
+    // 35-37: PIP Curl Angles & Fist Compactness
+    const vIdxPip1: [number, number, number] = [hand[5].x - hand[6].x, hand[5].y - hand[6].y, (hand[5].z ?? 0) - (hand[6].z ?? 0)];
+    const vIdxPip2: [number, number, number] = [hand[8].x - hand[6].x, hand[8].y - hand[6].y, (hand[8].z ?? 0) - (hand[6].z ?? 0)];
+    feat[35] = cosAngle3D(vIdxPip1, vIdxPip2);
+
+    const vMidPip1: [number, number, number] = [hand[9].x - hand[10].x, hand[9].y - hand[10].y, (hand[9].z ?? 0) - (hand[10].z ?? 0)];
+    const vMidPip2: [number, number, number] = [hand[12].x - hand[10].x, hand[12].y - hand[10].y, (hand[12].z ?? 0) - (hand[10].z ?? 0)];
+    feat[36] = cosAngle3D(vMidPip1, vMidPip2);
+
+    let sumTipDist = 0;
+    for (let i = 0; i < 5; i++) {
+      sumTipDist += this.dist3D(hand[tips[i]], hand[9]);
+    }
+    feat[37] = sumTipDist / (5 * scale);
+
+    // 38-41: Structural Invariant Ratios
+    feat[38] = this.dist3D(hand[8], hand[12]) / Math.max(0.01, this.dist3D(hand[5], hand[9]));
+    feat[39] = this.dist3D(hand[4], hand[20]) / scale;
+    feat[40] = cosAngle3D(vIndex, vMid);
+    feat[41] = this.dist3D(hand[4], hand[8]) / scale;
 
     return feat;
   }
@@ -392,6 +482,22 @@ class AlphabetInferenceEngine {
 
     if (useSingleHand) {
       const dominantTrack = tracks[0];
+
+      // Phase 6: Strict tracking-confidence integration.
+      // Suppress classification during coasting or when tracking quality is compromised.
+      if (dominantTrack.isCoasting || !qualityReport.isReliableForInference) {
+        return {
+          sign: 'NEUTRAL',
+          confidence: 0,
+          isDynamic: false,
+          handCount: 1,
+          convention: 'Single-Hand (Chart)',
+          allProbabilities: { NEUTRAL: 1.0 },
+          tracks,
+          qualityReport
+        };
+      }
+
       const features = this.extractSingleHandFeatures(dominantTrack.smoothedLandmarks);
       const res = this.runMLP(this.singleHandWeights, this.singleHandClasses, features);
       return {
@@ -407,6 +513,20 @@ class AlphabetInferenceEngine {
     } else {
       const dominantTrack = tracks.find((t) => t.role === 'Dominant') || tracks[0];
       const baseTrack = tracks.find((t) => t.role === 'Base') || (tracks.length > 1 ? tracks[1] : null);
+
+      // Phase 6: Strict tracking-confidence integration.
+      if (dominantTrack.isCoasting || !qualityReport.isReliableForInference) {
+        return {
+          sign: 'NEUTRAL',
+          confidence: 0,
+          isDynamic: false,
+          handCount: tracks.length,
+          convention: 'ISLRTC (2-Hand)',
+          allProbabilities: { NEUTRAL: 1.0 },
+          tracks,
+          qualityReport
+        };
+      }
 
       const features = this.extractDualHandFeatures(
         dominantTrack.smoothedLandmarks,
