@@ -20,7 +20,10 @@ class WebMediaPipeService {
           delegate: 'GPU'
         },
         runningMode: 'VIDEO',
-        numHands: 2
+        numHands: 2,
+        minHandDetectionConfidence: 0.6,
+        minHandPresenceConfidence: 0.6,
+        minTrackingConfidence: 0.6
       });
       this.isInitializing = false;
       return true;
@@ -37,7 +40,10 @@ class WebMediaPipeService {
             delegate: 'CPU'
           },
           runningMode: 'VIDEO',
-          numHands: 2
+          numHands: 2,
+          minHandDetectionConfidence: 0.6,
+          minHandPresenceConfidence: 0.6,
+          minTrackingConfidence: 0.6
         });
         this.isInitializing = false;
         return true;

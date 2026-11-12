@@ -1,11 +1,10 @@
 import islDualHandModel from './isl_alphabet_model.json';
 import singleHandModel from './single_hand_alphabet_model.json';
+import { Point3D } from './oneEuroFilter';
+import { persistentHandTracker, PersistentHandTrack } from './persistentHandTracker';
+import { trackingQualityEngine, TrackingQualityReport } from './trackingQualityEngine';
 
-export interface LandmarkPoint {
-  x: number;
-  y: number;
-  z: number;
-}
+export interface LandmarkPoint extends Point3D {}
 
 export type AlphabetConvention = 'auto' | 'islrtc_bimanual' | 'single_hand_chart';
 
@@ -16,8 +15,8 @@ export interface InferenceResult {
   handCount: number;
   convention: 'ISLRTC (2-Hand)' | 'Single-Hand (Chart)';
   allProbabilities: Record<string, number>;
-  rawLandmarks?: LandmarkPoint[][];
-  smoothedLandmarks?: LandmarkPoint[][];
+  tracks: PersistentHandTrack[];
+  qualityReport: TrackingQualityReport;
 }
 
 export interface TrajectoryPoint {
@@ -35,24 +34,14 @@ class AlphabetInferenceEngine {
   private singleHandWeights = singleHandModel.weights;
   private singleHandClasses = singleHandModel.classes;
 
-  // Anti-jitter landmark smoothing state (EMA filter)
-  private prevSmoothedHands: LandmarkPoint[][] = [];
-  private readonly SMOOTHING_ALPHA = 0.72; // Balance between zero lag and jitter-free rendering
-
   // Temporal buffer for dynamic sign tracking ('J', 'Z')
   private trajectoryBuffer: TrajectoryPoint[] = [];
 
-  private dist3D(p1: LandmarkPoint, p2: LandmarkPoint): number {
+  private dist3D(p1: Point3D, p2: Point3D): number {
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
     const dz = (p1.z ?? 0) - (p2.z ?? 0);
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
-  }
-
-  private dist2D(p1: LandmarkPoint, p2: LandmarkPoint): number {
-    const dx = p1.x - p2.x;
-    const dy = p1.y - p2.y;
-    return Math.sqrt(dx * dx + dy * dy);
   }
 
   private cosineAngle(v1: [number, number], v2: [number, number]): number {
@@ -63,53 +52,13 @@ class AlphabetInferenceEngine {
   }
 
   /**
-   * Applies Exponential Moving Average (EMA) smoothing to 21 landmarks
-   * to eliminate camera sensor jitter and landmark flicker.
-   */
-  public smoothLandmarks(rawHands: LandmarkPoint[][]): LandmarkPoint[][] {
-    if (!rawHands || rawHands.length === 0) {
-      this.prevSmoothedHands = [];
-      return [];
-    }
-
-    const smoothed: LandmarkPoint[][] = [];
-
-    for (let h = 0; h < rawHands.length; h++) {
-      const rawHand = rawHands[h];
-      const prevHand = this.prevSmoothedHands[h];
-
-      if (!prevHand || prevHand.length !== 21) {
-        smoothed.push(rawHand.map((p) => ({ ...p })));
-        continue;
-      }
-
-      // Check for abrupt hand relocation / tracking re-acquisition
-      const wristJump = this.dist2D(rawHand[0], prevHand[0]);
-      const alpha = wristJump > 0.25 ? 1.0 : this.SMOOTHING_ALPHA;
-
-      const smoothedHand: LandmarkPoint[] = [];
-      for (let j = 0; j < 21; j++) {
-        smoothedHand.push({
-          x: alpha * rawHand[j].x + (1 - alpha) * prevHand[j].x,
-          y: alpha * rawHand[j].y + (1 - alpha) * prevHand[j].y,
-          z: alpha * (rawHand[j].z ?? 0) + (1 - alpha) * (prevHand[j].z ?? 0)
-        });
-      }
-      smoothed.push(smoothedHand);
-    }
-
-    this.prevSmoothedHands = smoothed;
-    return smoothed;
-  }
-
-  /**
    * Extracts 28 invariant features for single-hand manual alphabet.
    */
-  public extractSingleHandFeatures(hand: LandmarkPoint[]): number[] {
+  public extractSingleHandFeatures(hand: Point3D[]): number[] {
     const feat = new Array<number>(28).fill(0);
     if (!hand || hand.length < 21) return feat;
 
-    const s = Math.max(0.04, this.dist3D(hand[0], hand[9])); // Palm scale
+    const s = Math.max(0.04, this.dist3D(hand[0], hand[9]));
 
     // 1. Extensions
     feat[0] = (this.dist3D(hand[4], hand[0]) - this.dist3D(hand[2], hand[0])) / s;
@@ -181,30 +130,9 @@ class AlphabetInferenceEngine {
   /**
    * Extracts 44 invariant features for dual-hand ISLRTC manual alphabet.
    */
-  public extractDualHandFeatures(
-    landmarks: LandmarkPoint[][],
-    handedness?: Array<Array<{ categoryName: string; score: number }>>
-  ): number[] {
+  public extractDualHandFeatures(h1: Point3D[], h2: Point3D[] | null): number[] {
     const feat = new Array<number>(44).fill(0);
-    if (!landmarks || landmarks.length === 0) return feat;
-
-    let h1 = landmarks[0];
-    let h2: LandmarkPoint[] | null = landmarks.length > 1 ? landmarks[1] : null;
-
-    if (landmarks.length > 1 && handedness && handedness.length >= 2) {
-      const h0Name = handedness[0]?.[0]?.categoryName;
-      if (h0Name === 'Left' && handedness[1]?.[0]?.categoryName === 'Right') {
-        h1 = landmarks[1];
-        h2 = landmarks[0];
-      }
-    } else if (landmarks.length > 1) {
-      const iso0 = this.dist2D(landmarks[0][8], landmarks[0][0]) / (this.dist2D(landmarks[0][12], landmarks[0][0]) || 1);
-      const iso1 = this.dist2D(landmarks[1][8], landmarks[1][0]) / (this.dist2D(landmarks[1][12], landmarks[1][0]) || 1);
-      if (iso1 > iso0) {
-        h1 = landmarks[1];
-        h2 = landmarks[0];
-      }
-    }
+    if (!h1 || h1.length < 21) return feat;
 
     const s1 = Math.max(0.04, this.dist3D(h1[0], h1[9]));
 
@@ -230,7 +158,7 @@ class AlphabetInferenceEngine {
     feat[15] = feat[10] > 0.3 && feat[6] > 0.2 ? 0.9 : 0.1;
     feat[16] = feat[10];
 
-    if (!h2) {
+    if (!h2 || h2.length < 21) {
       feat[17] = 0.0;
       feat[24] = 3.0;
       feat[27] = 3.0;
@@ -263,7 +191,7 @@ class AlphabetInferenceEngine {
     feat[32] = this.dist3D(h1[8], h2[5]) / s2; // T
     feat[33] = this.dist3D(h1[8], h2[9]) / s2; // M, N, V, H
 
-    const h2Cleft: LandmarkPoint = {
+    const h2Cleft: Point3D = {
       x: (h2[2].x + h2[5].x) / 2,
       y: (h2[2].y + h2[5].y) / 2,
       z: ((h2[2].z ?? 0) + (h2[5].z ?? 0)) / 2
@@ -271,12 +199,12 @@ class AlphabetInferenceEngine {
     feat[34] = this.dist3D(h1[8], h2Cleft) / s2; // Y
     feat[35] = this.dist3D(h1[8], h2[6]) / s2; // K
 
-    const h1LoopMid: LandmarkPoint = {
+    const h1LoopMid: Point3D = {
       x: (h1[4].x + h1[8].x) / 2,
       y: (h1[4].y + h1[8].y) / 2,
       z: ((h1[4].z ?? 0) + (h1[8].z ?? 0)) / 2
     };
-    const h2LoopMid: LandmarkPoint = {
+    const h2LoopMid: Point3D = {
       x: (h2[4].x + h2[8].x) / 2,
       y: (h2[4].y + h2[8].y) / 2,
       z: ((h2[4].z ?? 0) + (h2[8].z ?? 0)) / 2
@@ -361,15 +289,15 @@ class AlphabetInferenceEngine {
    * Evaluates dynamic trajectory buffer for ISLRTC dynamic letters 'J' and 'Z'.
    */
   private checkDynamicSigns(
-    landmarks: LandmarkPoint[][],
+    tracks: PersistentHandTrack[],
     now: number
   ): { sign: string; confidence: number } | null {
-    if (!landmarks || landmarks.length === 0) {
+    if (!tracks || tracks.length === 0) {
       this.trajectoryBuffer = [];
       return null;
     }
 
-    const tip = landmarks[0][8];
+    const tip = tracks[0].smoothedLandmarks[8];
     this.trajectoryBuffer.push({ x: tip.x, y: tip.y, time: now });
 
     while (this.trajectoryBuffer.length > 0 && now - this.trajectoryBuffer[0].time > 1200) {
@@ -377,7 +305,7 @@ class AlphabetInferenceEngine {
     }
     if (this.trajectoryBuffer.length < 12) return null;
 
-    // Check letter 'J'
+    // Check letter 'J': Starts high, moves down, hooks left/up
     const firstPoint = this.trajectoryBuffer[0];
     const midPoint = this.trajectoryBuffer[Math.floor(this.trajectoryBuffer.length / 2)];
     const lastPoint = this.trajectoryBuffer[this.trajectoryBuffer.length - 1];
@@ -390,7 +318,7 @@ class AlphabetInferenceEngine {
       return { sign: 'J', confidence: 0.92 };
     }
 
-    // Check letter 'Z'
+    // Check letter 'Z': 3-stroke zigzag
     if (this.trajectoryBuffer.length >= 18) {
       const p1 = this.trajectoryBuffer[0];
       const p2 = this.trajectoryBuffer[Math.floor(this.trajectoryBuffer.length / 3)];
@@ -410,50 +338,61 @@ class AlphabetInferenceEngine {
   }
 
   /**
-   * Runs end-to-end forward neural inference on hand landmarks.
+   * End-to-end multi-stage pipeline:
+   * 1. Persistent Hand Identity Association
+   * 2. Adaptive One Euro Landmark Filtering
+   * 3. Optical Tracking Quality Assessment
+   * 4. Kinematic Geometry & Classifier Inference
    */
   public predict(
-    rawLandmarks: LandmarkPoint[][],
-    handedness?: Array<Array<{ categoryName: string; score: number }>>,
+    rawLandmarks: Point3D[][],
+    handednessData?: Array<Array<{ categoryName: string; score: number }>>,
     convention: AlphabetConvention = 'auto',
+    videoWidth: number = 640,
+    videoHeight: number = 480,
     timestamp: number = performance.now()
   ): InferenceResult {
-    if (!rawLandmarks || rawLandmarks.length === 0) {
-      this.prevSmoothedHands = [];
+    // 1. Stage C & D: Persistent Hand Tracking + One Euro Filtering
+    const tracks = persistentHandTracker.update(rawLandmarks, handednessData, timestamp);
+
+    // 2. Stage E: Tracking Quality Engine Evaluation
+    const qualityReport = trackingQualityEngine.evaluate(tracks, videoWidth, videoHeight);
+
+    if (tracks.length === 0) {
       return {
         sign: 'NEUTRAL',
         confidence: 0,
         isDynamic: false,
         handCount: 0,
         convention: 'ISLRTC (2-Hand)',
-        allProbabilities: {}
+        allProbabilities: {},
+        tracks: [],
+        qualityReport
       };
     }
 
-    // 1. Anti-jitter smoothing
-    const smoothed = this.smoothLandmarks(rawLandmarks);
-
-    // 2. Check for dynamic signs
-    const dynamicMatch = this.checkDynamicSigns(smoothed, timestamp);
+    // 3. Dynamic Sign Check ('J', 'Z')
+    const dynamicMatch = this.checkDynamicSigns(tracks, timestamp);
     if (dynamicMatch && dynamicMatch.confidence >= 0.85) {
       return {
         sign: dynamicMatch.sign,
         confidence: dynamicMatch.confidence,
         isDynamic: true,
-        handCount: smoothed.length,
+        handCount: tracks.length,
         convention: 'ISLRTC (2-Hand)',
         allProbabilities: { [dynamicMatch.sign]: dynamicMatch.confidence },
-        rawLandmarks,
-        smoothedLandmarks: smoothed
+        tracks,
+        qualityReport
       };
     }
 
-    // 3. Determine execution mode
+    // 4. Determine Active Convention
     const useSingleHand =
-      convention === 'single_hand_chart' || (convention === 'auto' && smoothed.length === 1);
+      convention === 'single_hand_chart' || (convention === 'auto' && tracks.length === 1);
 
     if (useSingleHand) {
-      const features = this.extractSingleHandFeatures(smoothed[0]);
+      const dominantTrack = tracks[0];
+      const features = this.extractSingleHandFeatures(dominantTrack.smoothedLandmarks);
       const res = this.runMLP(this.singleHandWeights, this.singleHandClasses, features);
       return {
         sign: res.sign,
@@ -462,23 +401,35 @@ class AlphabetInferenceEngine {
         handCount: 1,
         convention: 'Single-Hand (Chart)',
         allProbabilities: res.allProbs,
-        rawLandmarks,
-        smoothedLandmarks: smoothed
+        tracks,
+        qualityReport
       };
     } else {
-      const features = this.extractDualHandFeatures(smoothed, handedness);
+      const dominantTrack = tracks.find((t) => t.role === 'Dominant') || tracks[0];
+      const baseTrack = tracks.find((t) => t.role === 'Base') || (tracks.length > 1 ? tracks[1] : null);
+
+      const features = this.extractDualHandFeatures(
+        dominantTrack.smoothedLandmarks,
+        baseTrack ? baseTrack.smoothedLandmarks : null
+      );
       const res = this.runMLP(this.dualHandWeights, this.dualHandClasses, features);
       return {
         sign: res.sign,
         confidence: res.confidence,
         isDynamic: false,
-        handCount: smoothed.length,
+        handCount: tracks.length,
         convention: 'ISLRTC (2-Hand)',
         allProbabilities: res.allProbs,
-        rawLandmarks,
-        smoothedLandmarks: smoothed
+        tracks,
+        qualityReport
       };
     }
+  }
+
+  public reset() {
+    persistentHandTracker.reset();
+    trackingQualityEngine.reset();
+    this.trajectoryBuffer = [];
   }
 }
 

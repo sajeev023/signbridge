@@ -16,7 +16,11 @@ import {
   ChevronUp,
   Sliders,
   CheckCircle2,
-  Maximize2
+  Gauge,
+  Terminal,
+  Crosshair,
+  Shield,
+  Play
 } from 'lucide-react';
 import { webMediaPipe } from '../services/webMediaPipeService';
 import {
@@ -25,10 +29,12 @@ import {
   InferenceResult,
   LandmarkPoint
 } from '../services/alphabetInferenceEngine';
+import { PersistentHandTrack } from '../services/persistentHandTracker';
+import { TrackingQualityReport, TrackingStatusState } from '../services/trackingQualityEngine';
 import { speechService } from '../services/speechService';
 import { HAND_CONNECTIONS } from '../services/cameraLandmarkDetector';
 
-// ISLRTC & Single-Hand Manual Alphabet Specification
+// Reference guide for supported alphabet signs
 const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string }> = {
   A: { desc: '1-Hand: Closed fist with thumb on side. 2-Hand: Dominant index on base thumb tip.', standard: 'Unified' },
   B: { desc: '1-Hand: 4 fingers upright, thumb across palm. 2-Hand: Two touching loops.', standard: 'Unified' },
@@ -58,6 +64,16 @@ const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string }> = {
   Z: { desc: 'Dynamic: Index finger traces 3-stroke zigzag Z trajectory in air or palm.', standard: 'Dynamic' }
 };
 
+interface BenchmarkMetrics {
+  targetLetter: string;
+  totalFrames: number;
+  avgFps: number;
+  avgLatencyMs: number;
+  continuityRate: number;
+  accuracyRate: number;
+  avgJitter: number;
+}
+
 export function LiveISLAlphabetRecognizer() {
   // Telemetry & Camera State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
@@ -68,20 +84,44 @@ export function LiveISLAlphabetRecognizer() {
   const [latencyMs, setLatencyMs] = useState<number>(0);
   const [trackedHandCount, setTrackedHandCount] = useState<number>(0);
 
+  // Diagnostic HUD & View Options
+  const [showDiagnosticHUD, setShowDiagnosticHUD] = useState<boolean>(false);
+  const [showReferenceDrawer, setShowReferenceDrawer] = useState<boolean>(false);
+  const [showCalibrationDeck, setShowCalibrationDeck] = useState<boolean>(false);
+
   // Scientific Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
 
-  // Recognition & Stability State Machine
+  // Multi-Stage Tracking & Quality Telemetry
+  const [trackingReport, setTrackingReport] = useState<TrackingQualityReport>({
+    status: 'SEARCHING',
+    qualityScore: 0,
+    stabilityScore: 0,
+    framing: 'TOO_FAR',
+    jitterVariance: 0,
+    trackedHandsCount: 0,
+    continuityFrames: 0,
+    isReliableForInference: false,
+    recommendation: 'Position hands in camera viewfinder.'
+  });
+
+  // Neural Recognition & Stability Lock
   const [currentResult, setCurrentResult] = useState<InferenceResult | null>(null);
   const [stableLockedLetter, setStableLockedLetter] = useState<string | null>(null);
   const [stabilityProgress, setStabilityProgress] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string>('SYSTEM STANDBY');
 
-  // Text Composition State
+  // Text Composition Terminal State
   const [textBuffer, setTextBuffer] = useState<string>('');
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
-  const [showReferenceDrawer, setShowReferenceDrawer] = useState<boolean>(false);
+
+  // Real-Time Calibration & Benchmark Test Bench State
+  const [isCalibrating, setIsCalibrating] = useState<boolean>(false);
+  const [calibrationLetter, setCalibrationLetter] = useState<string>('L');
+  const [calibrationResults, setCalibrationResults] = useState<BenchmarkMetrics | null>(null);
+  const calibrationFramesRef = useRef<Array<{ predicted: string; latency: number; jitter: number; isTracked: boolean }>>([]);
+  const calibrationStartTimeRef = useRef<number>(0);
 
   // DOM & Animation Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -89,7 +129,8 @@ export function LiveISLAlphabetRecognizer() {
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Consecutive-frame stability counters
+  // Real-time loop throttling & stability refs
+  const lastVideoTimeRef = useRef<number>(-1);
   const lastFrameTimestampRef = useRef<number>(performance.now());
   const frameCounterRef = useRef<number>(0);
   const candidateLetterRef = useRef<string | null>(null);
@@ -97,7 +138,7 @@ export function LiveISLAlphabetRecognizer() {
   const lastAcceptedLetterRef = useRef<string | null>(null);
   const neutralFramesRef = useRef<number>(0);
 
-  const STABILITY_REQUIRED_FRAMES = 7; // ~230ms at 30 FPS
+  const STABILITY_REQUIRED_FRAMES = 7;
   const CONFIDENCE_MINIMUM = 0.72;
 
   useEffect(() => {
@@ -118,6 +159,7 @@ export function LiveISLAlphabetRecognizer() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    alphabetInferenceEngine.reset();
     setIsCameraActive(false);
     setIsInitializing(false);
     setTrackedHandCount(0);
@@ -126,13 +168,13 @@ export function LiveISLAlphabetRecognizer() {
     setCurrentResult(null);
     setStableLockedLetter(null);
     setStabilityProgress(0);
-    setStatusMessage('CAMERA TERMINATED');
+    setStatusMessage('OPTICAL SENSORS INACTIVE');
   }, []);
 
   const startCamera = async () => {
     setCameraError(null);
     setIsInitializing(true);
-    setStatusMessage('CALIBRATING NEURAL SENSORS...');
+    setStatusMessage('INITIALIZING MEDIAPIPE WEB GPU ENGINE...');
 
     try {
       const mpReady = await webMediaPipe.init();
@@ -187,80 +229,86 @@ export function LiveISLAlphabetRecognizer() {
     }
   };
 
-  // Render smoothed precision skeletal overlays
-  const renderViewfinderOverlay = (
+  // High-precision anatomical skeleton & HUD renderer
+  const renderPrecisionViewfinder = (
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
-    hands: LandmarkPoint[][],
-    isLocked: boolean
+    tracks: PersistentHandTrack[],
+    quality: TrackingQualityReport,
+    isLocked: boolean,
+    showDiagnostics: boolean
   ) => {
     ctx.clearRect(0, 0, width, height);
 
-    // Viewfinder corner marks (Precision HUD)
-    ctx.strokeStyle = isLocked ? '#10b981' : 'rgba(148, 163, 184, 0.35)';
+    // 1. Viewfinder Corner HUD (Scientific aesthetic)
+    const isDegraded = quality.status === 'TRACKING DEGRADED';
+    ctx.strokeStyle = isLocked ? '#10b981' : isDegraded ? '#f59e0b' : 'rgba(56, 189, 248, 0.4)';
     ctx.lineWidth = 1.5;
-    const corner = 24;
-    const pad = 16;
+    const corner = 22;
+    const pad = 14;
 
-    // Top-Left
+    // Corner reticles
     ctx.beginPath();
     ctx.moveTo(pad, pad + corner);
     ctx.lineTo(pad, pad);
     ctx.lineTo(pad + corner, pad);
-    ctx.stroke();
-
-    // Top-Right
-    ctx.beginPath();
     ctx.moveTo(width - pad - corner, pad);
     ctx.lineTo(width - pad, pad);
     ctx.lineTo(width - pad, pad + corner);
-    ctx.stroke();
-
-    // Bottom-Left
-    ctx.beginPath();
     ctx.moveTo(pad, height - pad - corner);
     ctx.lineTo(pad, height - pad);
     ctx.lineTo(pad + corner, height - pad);
-    ctx.stroke();
-
-    // Bottom-Right
-    ctx.beginPath();
     ctx.moveTo(width - pad - corner, height - pad);
     ctx.lineTo(width - pad, height - pad);
     ctx.lineTo(width - pad, height - pad - corner);
     ctx.stroke();
 
-    if (!hands || hands.length === 0) {
-      // Crosshair center prompt
+    if (!tracks || tracks.length === 0) {
+      // Crosshair center target
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(width / 2 - 12, height / 2);
-      ctx.lineTo(width / 2 + 12, height / 2);
-      ctx.moveTo(width / 2, height / 2 - 12);
-      ctx.lineTo(width / 2, height / 2 + 12);
+      ctx.moveTo(width / 2 - 14, height / 2);
+      ctx.lineTo(width / 2 + 14, height / 2);
+      ctx.moveTo(width / 2, height / 2 - 14);
+      ctx.lineTo(width / 2, height / 2 + 14);
       ctx.stroke();
       return;
     }
 
-    // Draw hands with precision anti-jitter strokes
-    hands.forEach((hand, handIndex) => {
-      const isPrimary = handIndex === 0;
+    // 2. Render Anatomical Bone Chains & Palm Membranes
+    tracks.forEach((track) => {
+      const lm = track.smoothedLandmarks;
+      const isDominant = track.role === 'Dominant';
       const boneStroke = isLocked
         ? 'rgba(16, 185, 129, 0.9)'
-        : isPrimary
+        : isDominant
         ? 'rgba(56, 189, 248, 0.85)'
         : 'rgba(245, 158, 11, 0.85)';
-      const jointFill = isLocked ? '#34d399' : isPrimary ? '#38bdf8' : '#fbbf24';
+      const jointFill = isLocked ? '#34d399' : isDominant ? '#38bdf8' : '#fbbf24';
 
-      // Bones
-      ctx.lineWidth = 2.2;
-      ctx.strokeStyle = boneStroke;
+      // Palm Membrane Polygon (Wrist -> Thumb CMC -> Index MCP -> Mid MCP -> Ring MCP -> Pinky MCP -> Wrist)
+      ctx.beginPath();
+      ctx.moveTo(lm[0].x * width, lm[0].y * height);
+      ctx.lineTo(lm[1].x * width, lm[1].y * height);
+      ctx.lineTo(lm[2].x * width, lm[2].y * height);
+      ctx.lineTo(lm[5].x * width, lm[5].y * height);
+      ctx.lineTo(lm[9].x * width, lm[9].y * height);
+      ctx.lineTo(lm[13].x * width, lm[13].y * height);
+      ctx.lineTo(lm[17].x * width, lm[17].y * height);
+      ctx.closePath();
+      ctx.fillStyle = isDominant ? 'rgba(56, 189, 248, 0.08)' : 'rgba(245, 158, 11, 0.08)';
+      ctx.fill();
+
+      // Finger Bone Chains with anatomical taper
       for (const [start, end] of HAND_CONNECTIONS) {
-        const p1 = hand[start];
-        const p2 = hand[end];
+        const p1 = lm[start];
+        const p2 = lm[end];
         if (p1 && p2) {
+          const isMetacarpal = [0, 1, 5, 9, 13, 17].includes(start) && [1, 2, 5, 9, 13, 17].includes(end);
+          ctx.lineWidth = isMetacarpal ? 3.2 : 2.0;
+          ctx.strokeStyle = boneStroke;
           ctx.beginPath();
           ctx.moveTo(p1.x * width, p1.y * height);
           ctx.lineTo(p2.x * width, p2.y * height);
@@ -268,30 +316,70 @@ export function LiveISLAlphabetRecognizer() {
         }
       }
 
-      // Joints
-      for (let i = 0; i < hand.length; i++) {
-        const p = hand[i];
+      // Joints & Fingertip Markers
+      for (let i = 0; i < lm.length; i++) {
+        const p = lm[i];
         const isTip = [4, 8, 12, 16, 20].includes(i);
-        const radius = isTip ? 4 : 2.5;
+        const radius = isTip ? 4.5 : 2.5;
 
         ctx.beginPath();
         ctx.arc(p.x * width, p.y * height, radius, 0, 2 * Math.PI);
         ctx.fillStyle = isTip ? '#ffffff' : jointFill;
         ctx.fill();
-        ctx.strokeStyle = '#090b0e';
+        ctx.strokeStyle = '#07090d';
         ctx.lineWidth = 1;
         ctx.stroke();
+
+        // Optional Diagnostic View: Render Landmark IDs (0..20)
+        if (showDiagnostics) {
+          ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+          ctx.font = '500 8px monospace';
+          ctx.fillText(`${i}`, p.x * width + 5, p.y * height - 3);
+        }
       }
 
-      // Telemetry label
-      const wrist = hand[0];
-      ctx.fillStyle = isPrimary ? '#38bdf8' : '#fbbf24';
-      ctx.font = '500 10px monospace';
-      ctx.fillText(isPrimary ? 'H1:DOMINANT' : 'H2:BASE', wrist.x * width - 28, wrist.y * height + 16);
+      // Track Identity & Role HUD Tag
+      const wrist = lm[0];
+      ctx.fillStyle = isDominant ? '#38bdf8' : '#fbbf24';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(
+        `TRK_${track.trackId}:${isDominant ? 'DOMINANT' : 'BASE'} (${track.handedness})`,
+        wrist.x * width - 40,
+        wrist.y * height + 18
+      );
     });
+
+    // 3. Two-Hand Inter-Contact Radar Aura (Vowel Touch Point)
+    if (tracks.length >= 2) {
+      const h1Idx = tracks[0].smoothedLandmarks[8];
+      const h2Wrist = tracks[1].smoothedLandmarks[0];
+      const h2Thumb = tracks[1].smoothedLandmarks[4];
+      const h2Idx = tracks[1].smoothedLandmarks[8];
+      const h2Mid = tracks[1].smoothedLandmarks[12];
+      const h2Ring = tracks[1].smoothedLandmarks[16];
+      const h2Pinky = tracks[1].smoothedLandmarks[20];
+
+      const targets = [h2Thumb, h2Idx, h2Mid, h2Ring, h2Pinky];
+      for (const t of targets) {
+        const dx = (h1Idx.x - t.x) * width;
+        const dy = (h1Idx.y - t.y) * height;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 24) {
+          // Touch Contact Lock Aura
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(t.x * width, t.y * height, 10, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(t.x * width, t.y * height, 16, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      }
+    }
   };
 
-  // Real-time processing loop
+  // Real-Time Vision Pipeline
   const runVisionPipeline = () => {
     if (!videoRef.current || !canvasRef.current || videoRef.current.readyState < 2) {
       animationFrameRef.current = requestAnimationFrame(runVisionPipeline);
@@ -303,12 +391,19 @@ export function LiveISLAlphabetRecognizer() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
+    // Stage A: Duplicate Frame Elimination (Saves mobile GPU/CPU cycles)
+    if (video.currentTime === lastVideoTimeRef.current) {
+      animationFrameRef.current = requestAnimationFrame(runVisionPipeline);
+      return;
+    }
+    lastVideoTimeRef.current = video.currentTime;
+
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
     }
 
-    // Telemetry rate
+    // Measure FPS
     frameCounterRef.current++;
     if (frameCounterRef.current % 15 === 0) {
       const dt = t0 - lastFrameTimestampRef.current;
@@ -316,35 +411,56 @@ export function LiveISLAlphabetRecognizer() {
       lastFrameTimestampRef.current = t0;
     }
 
-    // 1. MediaPipe Inference
+    // Stage B: MediaPipe HandLandmarker Extraction
     const mpResult = webMediaPipe.detect(video, t0);
     const rawHands = (mpResult?.landmarks as LandmarkPoint[][]) || [];
     setTrackedHandCount(rawHands.length);
 
-    // 2. Neural Gesture Classification
+    // Stage C, D, E: Persistent Tracking + 1€ Filter + Quality Engine + Classifier
     let result: InferenceResult = {
       sign: 'NEUTRAL',
       confidence: 0,
       isDynamic: false,
       handCount: rawHands.length,
       convention: 'ISLRTC (2-Hand)',
-      allProbabilities: {}
+      allProbabilities: {},
+      tracks: [],
+      qualityReport: {
+        status: 'SEARCHING',
+        qualityScore: 0,
+        stabilityScore: 0,
+        framing: 'TOO_FAR',
+        jitterVariance: 0,
+        trackedHandsCount: 0,
+        continuityFrames: 0,
+        isReliableForInference: false,
+        recommendation: 'Position hands in viewfinder.'
+      }
     };
 
     if (rawHands.length > 0) {
-      result = alphabetInferenceEngine.predict(rawHands, mpResult?.handedness, convention, t0);
+      result = alphabetInferenceEngine.predict(
+        rawHands,
+        mpResult?.handedness,
+        convention,
+        canvas.width,
+        canvas.height,
+        t0
+      );
     }
     setCurrentResult(result);
+    setTrackingReport(result.qualityReport);
 
     const t1 = performance.now();
-    setLatencyMs(Number((t1 - t0).toFixed(1)));
+    const procLatency = Number((t1 - t0).toFixed(1));
+    setLatencyMs(procLatency);
 
-    // 3. Temporal Stability & Duplicate Prevention Filter
+    // Stability State Machine & Duplicate Prevention
     const sign = result.sign;
     const conf = result.confidence;
     let isLockedNow = false;
 
-    if (sign === 'NEUTRAL' || conf < CONFIDENCE_MINIMUM || rawHands.length === 0) {
+    if (sign === 'NEUTRAL' || conf < CONFIDENCE_MINIMUM || rawHands.length === 0 || !result.qualityReport.isReliableForInference) {
       neutralFramesRef.current++;
       if (neutralFramesRef.current >= 5) {
         lastAcceptedLetterRef.current = null;
@@ -352,7 +468,7 @@ export function LiveISLAlphabetRecognizer() {
       }
       candidateStreakRef.current = 0;
       setStabilityProgress(0);
-      setStatusMessage(rawHands.length === 0 ? 'SEARCHING FIELD OF VIEW' : 'TRANSITION / RESTING STATE');
+      setStatusMessage(result.qualityReport.recommendation);
     } else {
       neutralFramesRef.current = 0;
 
@@ -363,17 +479,15 @@ export function LiveISLAlphabetRecognizer() {
         candidateStreakRef.current = 1;
       }
 
-      // Check if sign is already accepted and held
       if (sign === lastAcceptedLetterRef.current) {
         setStabilityProgress(100);
-        setStatusMessage(`LOCKED: "${sign}" — RELEASE HAND TO RE-ENGAGE`);
+        setStatusMessage(`LOCKED: "${sign}" — RELEASE TO RETRANSITION`);
         isLockedNow = true;
       } else {
         const progress = Math.min(100, Math.round((candidateStreakRef.current / STABILITY_REQUIRED_FRAMES) * 100));
         setStabilityProgress(progress);
         setStatusMessage(`EVALUATING "${sign}" (${progress}%)`);
 
-        // Lock condition met!
         if (candidateStreakRef.current >= STABILITY_REQUIRED_FRAMES) {
           isLockedNow = true;
           setStableLockedLetter(sign);
@@ -386,14 +500,31 @@ export function LiveISLAlphabetRecognizer() {
       }
     }
 
-    // 4. Render Precision HUD
+    // Benchmark & Calibration Session Sampling
+    if (isCalibrating) {
+      calibrationFramesRef.current.push({
+        predicted: sign,
+        latency: procLatency,
+        jitter: result.qualityReport.jitterVariance,
+        isTracked: rawHands.length > 0
+      });
+
+      if (t0 - calibrationStartTimeRef.current >= 10000) {
+        // Conclude 10-second calibration
+        concludeCalibration();
+      }
+    }
+
+    // Stage F: Precision Viewfinder Canvas Rendering
     if (ctx) {
-      renderViewfinderOverlay(
+      renderPrecisionViewfinder(
         ctx,
         canvas.width,
         canvas.height,
-        result.smoothedLandmarks || rawHands,
-        isLockedNow
+        result.tracks,
+        result.qualityReport,
+        isLockedNow,
+        showDiagnosticHUD
       );
     }
 
@@ -444,6 +575,36 @@ export function LiveISLAlphabetRecognizer() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Calibration Protocol Handler
+  const startCalibrationSession = (target: string) => {
+    setCalibrationLetter(target);
+    calibrationFramesRef.current = [];
+    calibrationStartTimeRef.current = performance.now();
+    setIsCalibrating(true);
+  };
+
+  const concludeCalibration = () => {
+    setIsCalibrating(false);
+    const frames = calibrationFramesRef.current;
+    if (frames.length === 0) return;
+
+    const correct = frames.filter((f) => f.predicted === calibrationLetter).length;
+    const tracked = frames.filter((f) => f.isTracked).length;
+    const total = frames.length;
+    const avgLat = frames.reduce((a, b) => a + b.latency, 0) / total;
+    const avgJit = frames.reduce((a, b) => a + b.jitter, 0) / total;
+
+    setCalibrationResults({
+      targetLetter: calibrationLetter,
+      totalFrames: total,
+      avgFps: Math.round((total / 10)),
+      avgLatencyMs: Number(avgLat.toFixed(1)),
+      continuityRate: Math.round((tracked / total) * 100),
+      accuracyRate: Math.round((correct / total) * 100),
+      avgJitter: Number(avgJit.toFixed(5))
+    });
+  };
+
   const activeSign =
     currentResult?.sign !== 'NEUTRAL' && (currentResult?.confidence ?? 0) >= CONFIDENCE_MINIMUM
       ? currentResult?.sign
@@ -451,7 +612,7 @@ export function LiveISLAlphabetRecognizer() {
 
   return (
     <div className="min-h-screen bg-[#07090d] text-[#e2e8f0] flex flex-col font-mono selection:bg-cyan-500 selection:text-black">
-      {/* 1. Scientific Instrument Header */}
+      {/* 1. Header Bar */}
       <header className="border-b border-[#181d26] bg-[#0c0f16]/95 backdrop-blur px-4 py-2.5">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -462,19 +623,38 @@ export function LiveISLAlphabetRecognizer() {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm tracking-wider text-white">SIGNBRIDGE</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#232a37] bg-[#121620] text-slate-400">
-                  SYS 2.1
+                  SYS 2.1 • 1€ FILTER
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-sans">Real-Time Optical Sign Alphabet Recognition</p>
+              <p className="text-[11px] text-slate-400 font-sans">Multi-Stage Optical Tracking & Neural Alphabet Engine</p>
             </div>
           </div>
 
-          {/* Telemetry Status Strip */}
+          {/* Telemetry Strip & Toggles */}
           <div className="flex items-center gap-2 text-[11px]">
-            <div className="px-2 py-1 rounded border border-[#1e2430] bg-[#10141d] flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isCameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-              <span className="text-slate-300">{isCameraActive ? 'ONLINE' : 'STANDBY'}</span>
-            </div>
+            <button
+              onClick={() => setShowDiagnosticHUD(!showDiagnosticHUD)}
+              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showDiagnosticHUD
+                  ? 'border-cyan-800 bg-cyan-950/80 text-cyan-300 font-bold'
+                  : 'border-[#1e2430] bg-[#10141d] text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{showDiagnosticHUD ? 'DIAG: ON' : 'DIAG'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowCalibrationDeck(!showCalibrationDeck)}
+              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showCalibrationDeck
+                  ? 'border-amber-800 bg-amber-950/80 text-amber-300 font-bold'
+                  : 'border-[#1e2430] bg-[#10141d] text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Gauge className="w-3.5 h-3.5 text-amber-400" />
+              <span>CALIBRATION</span>
+            </button>
 
             <button
               onClick={() => {
@@ -494,10 +674,10 @@ export function LiveISLAlphabetRecognizer() {
 
             <button
               onClick={() => setShowReferenceDrawer(!showReferenceDrawer)}
-              className="px-2.5 py-1 rounded border border-[#1e2430] bg-[#10141d] text-slate-300 hover:bg-[#151b27] flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2 py-1 rounded border border-[#1e2430] bg-[#10141d] text-slate-300 hover:bg-[#151b27] flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <span>CHART REF</span>
+              <span>REF</span>
               {showReferenceDrawer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           </div>
@@ -505,14 +685,86 @@ export function LiveISLAlphabetRecognizer() {
       </header>
 
       {/* 2. Main Instrument Layout */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5 space-y-4 font-sans">
-        {/* Error / Diagnostic Banner */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5 space-y-3 font-sans">
+        {/* Error Alert */}
         {cameraError && (
           <div className="p-3.5 rounded border border-rose-900/80 bg-rose-950/30 text-rose-300 text-xs flex items-start gap-3 font-mono">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <div>
-              <strong className="text-rose-200">HARDWARE INITIALIZATION FAULT:</strong> {cameraError}
+              <strong className="text-rose-200">OPTICAL ACQUISITION ERROR:</strong> {cameraError}
             </div>
+          </div>
+        )}
+
+        {/* Real-World Calibration & Diagnostic Deck (Collapsible) */}
+        {showCalibrationDeck && (
+          <div className="p-4 rounded border border-[#1f2636] bg-[#0c1017] space-y-3 font-mono text-xs animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1b212c] pb-2">
+              <span className="text-amber-400 font-bold tracking-wider flex items-center gap-2">
+                <Gauge className="w-4 h-4" />
+                EMPIRICAL CAMERA CALIBRATION & BENCHMARK BENCH
+              </span>
+              <span className="text-[11px] text-slate-400 font-sans">
+                Real-World 10-Second Physical Device Evaluation Protocol
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Target Sign:</span>
+                <select
+                  value={calibrationLetter}
+                  onChange={(e) => setCalibrationLetter(e.target.value)}
+                  disabled={isCalibrating}
+                  className="bg-[#121620] border border-[#232a37] text-cyan-300 px-2 py-1 rounded text-xs"
+                >
+                  {Object.keys(ALPHABET_REFERENCE).map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => startCalibrationSession(calibrationLetter)}
+                disabled={isCalibrating || !isCameraActive}
+                className="px-4 py-1.5 rounded border border-amber-600 bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-40 text-amber-300 font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>{isCalibrating ? 'RECORDING (10s)...' : 'START 10s CALIBRATION'}</span>
+              </button>
+            </div>
+
+            {/* Benchmark Report */}
+            {calibrationResults && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-2 border-t border-[#181e28]">
+                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
+                  <span className="text-[10px] text-slate-500">SIGN</span>
+                  <p className="text-base font-bold text-cyan-400">{calibrationResults.targetLetter}</p>
+                </div>
+                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
+                  <span className="text-[10px] text-slate-500">ACCURACY</span>
+                  <p className="text-base font-bold text-emerald-400">{calibrationResults.accuracyRate}%</p>
+                </div>
+                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
+                  <span className="text-[10px] text-slate-500">CONTINUITY</span>
+                  <p className="text-base font-bold text-slate-200">{calibrationResults.continuityRate}%</p>
+                </div>
+                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
+                  <span className="text-[10px] text-slate-500">CAMERA FPS</span>
+                  <p className="text-base font-bold text-slate-200">{calibrationResults.avgFps}</p>
+                </div>
+                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
+                  <span className="text-[10px] text-slate-500">LATENCY</span>
+                  <p className="text-base font-bold text-slate-200">{calibrationResults.avgLatencyMs} ms</p>
+                </div>
+                <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
+                  <span className="text-[10px] text-slate-500">JITTER VAR</span>
+                  <p className="text-base font-bold text-amber-400">{calibrationResults.avgJitter}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -522,18 +774,12 @@ export function LiveISLAlphabetRecognizer() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1b212c] pb-2">
               <span className="text-amber-400 font-bold tracking-wider flex items-center gap-2">
                 <Sliders className="w-4 h-4" />
-                LINGUISTIC SPECIFICATION: ISLRTC VS ASL CHART
+                CONVENTION DEFINITIONS: ISLRTC 2-HAND VS 1-HAND CHART
               </span>
               <span className="text-[11px] text-slate-400 font-sans">
-                Supplied Reference: 1-Hand ASL (Trend Ent. 2001) | Indian Standard: 2-Hand ISLRTC
+                Supplied Poster: 1-Hand ASL (Trend Ent. 2001) | National Indian Standard: 2-Hand ISLRTC
               </span>
             </div>
-            <p className="text-slate-300 text-[11px] font-sans leading-relaxed">
-              Standard <strong>Indian Sign Language (ISL)</strong> fingerspelling certified by the ISLRTC is predominantly
-              bimanual (two-handed), with vowels formed by indexing the base hand&apos;s 5 fingertips. However, single-handed
-              fingerspelling (matching your supplied reference chart) is widely used in informal and mobile contexts.
-              SignBridge supports <strong>both conventions</strong> seamlessly:
-            </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-[11px] font-mono">
               {Object.entries(ALPHABET_REFERENCE).map(([lettr, d]) => (
                 <div key={lettr} className="p-2 rounded border border-[#181e29] bg-[#080b10] flex flex-col justify-between">
@@ -549,11 +795,10 @@ export function LiveISLAlphabetRecognizer() {
         )}
 
         {/* 3. Primary Viewport & Telemetry Deck */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
           {/* Viewfinder Column (7 cols) */}
           <div className="lg:col-span-7 space-y-2">
             <div className="relative aspect-[4/3] sm:aspect-video w-full rounded border border-[#1e2430] bg-[#05070a] overflow-hidden flex items-center justify-center shadow-lg">
-              {/* Camera Video Stream */}
               <video
                 ref={videoRef}
                 playsInline
@@ -564,7 +809,6 @@ export function LiveISLAlphabetRecognizer() {
                 }`}
               />
 
-              {/* High-Precision Viewfinder Overlay Canvas */}
               <canvas
                 ref={canvasRef}
                 className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 pointer-events-none ${
@@ -572,16 +816,16 @@ export function LiveISLAlphabetRecognizer() {
                 }`}
               />
 
-              {/* Inactive Standby View */}
+              {/* Standby Prompt */}
               {!isCameraActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4 bg-[#080b10]">
                   <div className="w-12 h-12 rounded border border-[#232b3b] bg-[#0f131a] flex items-center justify-center text-cyan-400">
                     <Camera className="w-6 h-6" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-mono font-bold tracking-wider text-slate-200">OPTICAL SENSOR IDLE</p>
+                    <p className="text-sm font-mono font-bold tracking-wider text-slate-200">OPTICAL TRACKING OFFLINE</p>
                     <p className="text-xs text-slate-400 font-sans max-w-sm">
-                      Initialize front camera for live hand-tracking and real-time neural alphabet recognition.
+                      Initialize camera sensor to engage persistent 21-joint tracking with adaptive One Euro filtering.
                     </p>
                   </div>
                   <button
@@ -592,7 +836,7 @@ export function LiveISLAlphabetRecognizer() {
                     {isInitializing ? (
                       <>
                         <Activity className="w-4 h-4 animate-spin" />
-                        <span>INITIALIZING...</span>
+                        <span>INITIALIZING ENGINE...</span>
                       </>
                     ) : (
                       <>
@@ -602,7 +846,7 @@ export function LiveISLAlphabetRecognizer() {
                     )}
                   </button>
                   <p className="text-[10px] text-slate-500 font-mono">
-                    LOCAL RUNTIME: 100% IN-BROWSER INFERENCE • ZERO CLOUD TELEMETRY
+                    MULTI-STAGE: MEDIAPIPE + PERSISTENT TRACKING + 1€ FILTER + NEURAL MLP
                   </p>
                 </div>
               )}
@@ -622,7 +866,7 @@ export function LiveISLAlphabetRecognizer() {
                     <button
                       onClick={toggleFacingMode}
                       className="p-1 rounded bg-[#0a0d13]/90 border border-[#1b222d] text-slate-300 hover:text-white transition-colors cursor-pointer"
-                      title="Flip Sensor (Front/Rear)"
+                      title="Flip Sensor"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </button>
@@ -639,14 +883,27 @@ export function LiveISLAlphabetRecognizer() {
 
               {/* Viewport Bottom Status Bar */}
               {isCameraActive && (
-                <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono pointer-events-none bg-[#0a0d13]/80 px-2.5 py-1 rounded border border-[#19202a]">
-                  <span className="text-slate-300 truncate">{statusMessage}</span>
-                  <span className="text-slate-500 font-bold uppercase">{currentResult?.convention || '2-HAND'}</span>
+                <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono pointer-events-none bg-[#0a0d13]/85 px-2.5 py-1 rounded border border-[#19202a]">
+                  <div className="flex items-center gap-2 truncate">
+                    <span
+                      className={`px-1.5 py-0.2 rounded font-bold text-[9px] ${
+                        trackingReport.status === 'TRACKING'
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                          : trackingReport.status === 'TRACKING DEGRADED'
+                          ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}
+                    >
+                      {trackingReport.status}
+                    </span>
+                    <span className="text-slate-300 truncate">{statusMessage}</span>
+                  </div>
+                  <span className="text-cyan-400 font-bold">{trackingReport.qualityScore}% Q</span>
                 </div>
               )}
             </div>
 
-            {/* Convention Mode Selector Bar */}
+            {/* Mode & Telemetry Status Bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded border border-[#171c26] bg-[#0c0f16] text-xs font-mono">
               <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
                 <Sliders className="w-3.5 h-3.5 text-cyan-400" />
@@ -672,19 +929,44 @@ export function LiveISLAlphabetRecognizer() {
 
           {/* Telemetry & Composition Column (5 cols) */}
           <div className="lg:col-span-5 space-y-3 font-mono">
-            {/* 1. Recognition Readout Panel */}
-            <div className="p-4 rounded border border-[#1e2430] bg-[#0d1017] space-y-3.5">
-              <div className="flex items-center justify-between border-b border-[#161c26] pb-2 text-xs">
+            {/* 1. Dedicated Tracking Quality Gauge */}
+            <div className="p-3.5 rounded border border-[#1e2430] bg-[#0d1017] space-y-2.5 text-xs">
+              <div className="flex items-center justify-between border-b border-[#161c26] pb-1.5">
+                <span className="text-slate-400 tracking-wider uppercase flex items-center gap-1.5 font-bold">
+                  <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+                  OPTICAL TRACKING QUALITY
+                </span>
+                <span className="text-emerald-400 font-bold">{trackingReport.qualityScore}% HEALTH</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-[10px]">
+                <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
+                  <span className="text-slate-500">STABILITY</span>
+                  <p className="font-bold text-slate-200">{trackingReport.stabilityScore}%</p>
+                </div>
+                <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
+                  <span className="text-slate-500">FRAMING</span>
+                  <p className="font-bold text-cyan-400">{trackingReport.framing}</p>
+                </div>
+                <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
+                  <span className="text-slate-500">JITTER VAR</span>
+                  <p className="font-bold text-amber-400">{trackingReport.jitterVariance}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Neural Recognition Readout Panel */}
+            <div className="p-3.5 rounded border border-[#1e2430] bg-[#0d1017] space-y-3">
+              <div className="flex items-center justify-between border-b border-[#161c26] pb-1.5 text-xs">
                 <span className="text-slate-400 tracking-wider uppercase flex items-center gap-1.5 font-bold">
                   <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                  RECOGNITION TELEMETRY
+                  CLASSIFIER OUTPUT
                 </span>
                 <span className="text-[11px] text-slate-500 font-mono">
-                  CONFIDENCE: {Math.round((currentResult?.confidence ?? 0) * 100)}%
+                  CONF: {Math.round((currentResult?.confidence ?? 0) * 100)}%
                 </span>
               </div>
 
-              {/* Primary Output Display */}
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded border border-[#222b3b] bg-[#07090e] flex items-center justify-center">
                   {activeSign ? (
@@ -699,7 +981,7 @@ export function LiveISLAlphabetRecognizer() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-slate-200">
-                      {activeSign ? `CHARACTER: ${activeSign}` : 'NO TARGET GESTURE'}
+                      {activeSign ? `LETTER: ${activeSign}` : 'NO TARGET GESTURE'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 font-sans leading-snug">
@@ -710,7 +992,7 @@ export function LiveISLAlphabetRecognizer() {
                 </div>
               </div>
 
-              {/* Stability Gauge */}
+              {/* Lock Progress Meter */}
               <div className="space-y-1 pt-1 text-[11px]">
                 <div className="flex items-center justify-between text-slate-400">
                   <span>TEMPORAL LOCK METER</span>
@@ -724,13 +1006,12 @@ export function LiveISLAlphabetRecognizer() {
                 </div>
               </div>
 
-              {/* Quick Accept / Feedback Bar */}
               <div className="flex items-center justify-between pt-1">
                 <span className="text-[10px] text-slate-400">
                   {stableLockedLetter ? (
                     <span className="text-emerald-400 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
-                      LOCKED IN BUFFER
+                      ACCEPTED IN TERMINAL
                     </span>
                   ) : (
                     'HOLD STEADY TO AUTO-ACCEPT'
@@ -747,25 +1028,23 @@ export function LiveISLAlphabetRecognizer() {
               </div>
             </div>
 
-            {/* 2. Text Terminal Composition Deck */}
-            <div className="p-4 rounded border border-[#1e2430] bg-[#0d1017] space-y-3 font-mono">
-              <div className="flex items-center justify-between border-b border-[#161c26] pb-2 text-xs">
+            {/* 3. Terminal Composition Deck */}
+            <div className="p-3.5 rounded border border-[#1e2430] bg-[#0d1017] space-y-2.5 font-mono">
+              <div className="flex items-center justify-between border-b border-[#161c26] pb-1.5 text-xs">
                 <span className="text-slate-400 tracking-wider uppercase flex items-center gap-1.5 font-bold">
-                  <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                  <Terminal className="w-3.5 h-3.5 text-emerald-400" />
                   OUTPUT TERMINAL
                 </span>
                 <span className="text-[11px] text-slate-500">{textBuffer.length} CHARS</span>
               </div>
 
-              {/* Monospace Output Monitor */}
-              <div className="min-h-[70px] p-3 rounded border border-[#1a202c] bg-[#06080c] text-base tracking-widest text-emerald-300 break-words flex items-center justify-between select-all">
+              <div className="min-h-[64px] p-2.5 rounded border border-[#1a202c] bg-[#06080c] text-base tracking-widest text-emerald-300 break-words flex items-center justify-between select-all">
                 <span>
                   {textBuffer || <span className="text-slate-600 text-xs tracking-normal">Awaiting input...</span>}
                   <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse align-middle" />
                 </span>
               </div>
 
-              {/* Action Controls */}
               <div className="grid grid-cols-4 gap-1.5 text-[11px]">
                 <button
                   onClick={handleSpace}
@@ -801,7 +1080,6 @@ export function LiveISLAlphabetRecognizer() {
                 </button>
               </div>
 
-              {/* Copy Action */}
               {textBuffer && (
                 <button
                   onClick={handleCopy}
@@ -816,12 +1094,12 @@ export function LiveISLAlphabetRecognizer() {
         </div>
 
         {/* 4. Scientific Footnote */}
-        <footer className="pt-3 border-t border-[#161c26] text-[11px] font-mono text-slate-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <footer className="pt-2.5 border-t border-[#161c26] text-[10px] font-mono text-slate-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
           <span>
-            SIGNBRIDGE CORE • ASSISTIVE COMPUTER VISION & NEURAL KINEMATICS
+            SIGNBRIDGE • MULTI-STAGE OPTICAL TRACKING ARCHITECTURE
           </span>
           <span className="text-slate-600">
-            ISLRTC Bimanual + Unified Manual Alphabet Engine
+            One Euro Adaptive Filter • Persistent Track Association • Invariant Neural Classification
           </span>
         </footer>
       </main>
