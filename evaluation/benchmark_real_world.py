@@ -571,81 +571,15 @@ def build_real_world_evaluation_dataset() -> List[Dict[str, Any]]:
 
 # --- ALPHABET CLASSIFICATION EVALUATOR ---
 
+sys.path.append(str(Path(__file__).resolve().parent.parent / "backend"))
+try:
+    from alphabet_feature_extractor import extract_canonical_features
+except ImportError:
+    from backend.alphabet_feature_extractor import extract_canonical_features
+
+
 def extract_single_hand_features(landmarks: List[Dict[str, float]]) -> List[float]:
-    feat = [0.0] * 28
-    if not landmarks or len(landmarks) < 21:
-        return feat
-
-    def d3d(p1, p2):
-        dx = p1["x"] - p2["x"]
-        dy = p1["y"] - p2["y"]
-        dz = p1.get("z", 0) - p2.get("z", 0)
-        return math.sqrt(dx * dx + dy * dy + dz * dz)
-
-    s = max(0.04, d3d(landmarks[0], landmarks[9]))
-
-    # 1. Extensions
-    feat[0] = (d3d(landmarks[4], landmarks[0]) - d3d(landmarks[2], landmarks[0])) / s
-    feat[1] = (d3d(landmarks[8], landmarks[0]) - d3d(landmarks[6], landmarks[0])) / s
-    feat[2] = (d3d(landmarks[12], landmarks[0]) - d3d(landmarks[10], landmarks[0])) / s
-    feat[3] = (d3d(landmarks[16], landmarks[0]) - d3d(landmarks[14], landmarks[0])) / s
-    feat[4] = (d3d(landmarks[20], landmarks[0]) - d3d(landmarks[18], landmarks[0])) / s
-
-    # 2. Tip to wrist distances
-    feat[5] = d3d(landmarks[4], landmarks[0]) / s
-    feat[6] = d3d(landmarks[8], landmarks[0]) / s
-    feat[7] = d3d(landmarks[12], landmarks[0]) / s
-    feat[8] = d3d(landmarks[16], landmarks[0]) / s
-    feat[9] = d3d(landmarks[20], landmarks[0]) / s
-
-    # 3. Curls
-    feat[10] = 0.5
-    feat[11] = max(0.0, 1.0 - d3d(landmarks[8], landmarks[5]) / s)
-    feat[12] = max(0.0, 1.0 - d3d(landmarks[12], landmarks[9]) / s)
-    feat[13] = max(0.0, 1.0 - d3d(landmarks[16], landmarks[13]) / s)
-    feat[14] = max(0.0, 1.0 - d3d(landmarks[20], landmarks[17]) / s)
-
-    # 4. Spreads
-    feat[15] = d3d(landmarks[4], landmarks[8]) / s
-    feat[16] = d3d(landmarks[8], landmarks[12]) / s
-    feat[17] = d3d(landmarks[12], landmarks[16]) / s
-    feat[18] = d3d(landmarks[16], landmarks[20]) / s
-
-    # 5. Handshape Invariants
-    feat[19] = feat[15]
-    feat[20] = d3d(landmarks[4], landmarks[12]) / s
-
-    # L-angle
-    tv = [landmarks[4]["x"] - landmarks[2]["x"], landmarks[4]["y"] - landmarks[2]["y"]]
-    iv = [landmarks[8]["x"] - landmarks[5]["x"], landmarks[8]["y"] - landmarks[5]["y"]]
-    dot = tv[0]*iv[0] + tv[1]*iv[1]
-    mag1 = math.sqrt(tv[0]**2 + tv[1]**2) or 1e-6
-    mag2 = math.sqrt(iv[0]**2 + iv[1]**2) or 1e-6
-    cos_val = abs(dot / (mag1 * mag2))
-    feat[21] = 1.0 - cos_val if feat[15] > 0.6 and feat[1] > 0.4 else 0.0
-
-    # Y-span
-    feat[22] = d3d(landmarks[4], landmarks[20]) / s
-
-    # Crossed (R)
-    feat[23] = 0.9 if feat[1] > 0.5 and feat[2] > 0.5 and feat[16] < 0.25 else 0.0
-
-    # Fist compactness
-    avg_tip_dist = sum(d3d(landmarks[t], landmarks[9]) for t in [4, 8, 12, 16, 20]) / (5 * s)
-    feat[24] = max(0.0, 1.2 - avg_tip_dist)
-
-    # Horizontal alignment (G, H)
-    dx = abs(landmarks[8]["x"] - landmarks[5]["x"])
-    dy = abs(landmarks[8]["y"] - landmarks[5]["y"])
-    feat[25] = 0.9 if dx > 1.5 * dy else 0.1
-
-    # C-curve
-    feat[26] = 0.92 if feat[15] > 0.3 and feat[11] > 0.2 and feat[12] > 0.2 else 0.1
-
-    # U-parallel
-    feat[27] = 0.94 if feat[1] > 0.7 and feat[2] > 0.7 and feat[16] < 0.15 else 0.1
-
-    return feat
+    return extract_canonical_features(landmarks).tolist()
 
 
 def run_mlp_inference(weights_data: Dict[str, Any], features: List[float]) -> Tuple[str, float, Dict[str, float]]:
