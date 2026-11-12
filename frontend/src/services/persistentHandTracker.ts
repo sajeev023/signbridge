@@ -1,4 +1,16 @@
-import { HandSkeletonFilter, Point3D } from './oneEuroFilter';
+/**
+ * Persistent Hand Tracker with Motion-Aware Velocity Prediction,
+ * Scale-Normalized Association, and Identity Continuity Preservation.
+ *
+ * Implements Phase 2 & 3 hybrid architecture:
+ * - Distinguishes OBSERVED, PREDICTED, and FILTERED landmark states.
+ * - Velocity-extrapolates coasting tracks during temporary occlusion.
+ * - Prevents identity swaps during hand crossing and proximity interaction.
+ * - Logs identity-switch events and reacquisition timing.
+ */
+
+import { HandSkeletonFilter, Point3D, ProvenancedLandmark } from './oneEuroFilter';
+import { AnatomicalHandModel, AnatomicalIntegrityReport } from './anatomicalHandModel';
 
 export interface PersistentHandTrack {
   trackId: number;
@@ -6,22 +18,39 @@ export interface PersistentHandTrack {
   handedness: 'Left' | 'Right';
   handednessConfidence: number;
   rawLandmarks: Point3D[];
-  smoothedLandmarks: Point3D[];
+  observedLandmarks: Point3D[];
+  predictedLandmarks: Point3D[];
+  smoothedLandmarks: ProvenancedLandmark[];
   wrist: Point3D;
   palmCenter: Point3D;
   palmScale: number;
-  velocity: Point3D;
+  velocity: Point3D; // Normalized units per second
   framesTracked: number;
   framesMissing: number;
   isCoasting: boolean;
   filter: HandSkeletonFilter;
+  integrityReport: AnatomicalIntegrityReport;
+  lastDetectionTimestamp: number;
+}
+
+export interface TrackerDiagnosticTelemetry {
+  activeTracksCount: number;
+  identitySwitchesCount: number;
+  reacquisitionsCount: number;
+  totalFramesProcessed: number;
+  coastingTracksCount: number;
 }
 
 export class PersistentHandTracker {
   private activeTracks: PersistentHandTrack[] = [];
   private nextTrackId: number = 0;
-  private readonly MAX_COASTING_FRAMES = 4; // Grace period for temporary finger occlusion
-  private readonly MATCHING_DISTANCE_THRESHOLD = 0.28; // Screen normalized max movement per frame
+  private readonly MAX_COASTING_FRAMES = 5; // Survives up to ~160ms occlusion at 30 FPS
+  private readonly BASE_MATCHING_DISTANCE_THRESHOLD = 0.28; // Screen normalized max movement per frame
+
+  // Diagnostic counters
+  private identitySwitchesCount: number = 0;
+  private reacquisitionsCount: number = 0;
+  private totalFramesProcessed: number = 0;
 
   private dist2D(p1: Point3D, p2: Point3D): number {
     const dx = p1.x - p2.x;
@@ -30,7 +59,7 @@ export class PersistentHandTracker {
   }
 
   private computePalmCenter(landmarks: Point3D[]): Point3D {
-    // Center of MCP joints (5, 9, 13, 17) and wrist (0)
+    // Robust geometric centroid of wrist (0) and 4 metacarpal bases (5, 9, 13, 17)
     return {
       x: (landmarks[0].x + landmarks[5].x + landmarks[9].x + landmarks[13].x + landmarks[17].x) / 5.0,
       y: (landmarks[0].y + landmarks[5].y + landmarks[9].y + landmarks[13].y + landmarks[17].y) / 5.0,
@@ -44,18 +73,19 @@ export class PersistentHandTracker {
     const dx = wrist.x - midMCP.x;
     const dy = wrist.y - midMCP.y;
     const dz = (wrist.z ?? 0) - (midMCP.z ?? 0);
-    return Math.max(0.04, Math.sqrt(dx * dx + dy * dy + dz * dz));
+    return Math.max(0.035, Math.sqrt(dx * dx + dy * dy + dz * dz));
   }
 
   /**
-   * Associates new MediaPipe detections with persistent tracks using spatial distance
-   * and handedness continuity to prevent identity swapping and landmark jumps.
+   * Updates tracker state with incoming MediaPipe detection frames.
    */
   public update(
     rawDetections: Point3D[][],
     handednessData?: Array<Array<{ categoryName: string; score: number }>>,
     timestamp: number = performance.now()
   ): PersistentHandTrack[] {
+    this.totalFramesProcessed++;
+
     const incomingDetections = rawDetections.map((lm, idx) => {
       const palmCenter = this.computePalmCenter(lm);
       const palmScale = this.computePalmScale(lm);
@@ -75,24 +105,44 @@ export class PersistentHandTracker {
     const matchedIncoming = new Set<number>();
     const matchedTracks = new Set<number>();
 
-    // 1. Solve Association Problem (Greedy bipartite matching by Euclidean distance)
+    // 1. Solve Association Problem with Motion-Projected Bipartite Matching
     if (this.activeTracks.length > 0 && incomingDetections.length > 0) {
       const candidates: Array<{ trackIdx: number; detIdx: number; cost: number }> = [];
 
       for (let t = 0; t < this.activeTracks.length; t++) {
         const track = this.activeTracks[t];
+        const dt = Math.max(0.016, (timestamp - track.lastDetectionTimestamp) / 1000.0);
+
+        // Motion-aware Kalman/velocity projected position
+        const projectedPalmCenter: Point3D = {
+          x: track.palmCenter.x + track.velocity.x * dt,
+          y: track.palmCenter.y + track.velocity.y * dt,
+          z: (track.palmCenter.z ?? 0) + track.velocity.z * dt
+        };
+        const projectedWrist: Point3D = {
+          x: track.wrist.x + track.velocity.x * dt,
+          y: track.wrist.y + track.velocity.y * dt,
+          z: (track.wrist.z ?? 0) + track.velocity.z * dt
+        };
+
         for (let d = 0; d < incomingDetections.length; d++) {
           const det = incomingDetections[d];
-          const distPalm = this.dist2D(track.palmCenter, det.palmCenter);
-          const distWrist = this.dist2D(track.wrist, det.wrist);
-          let cost = 0.6 * distPalm + 0.4 * distWrist;
+          const distPalm = this.dist2D(projectedPalmCenter, det.palmCenter);
+          const distWrist = this.dist2D(projectedWrist, det.wrist);
 
-          // Penalize unexpected handedness flip
-          if (track.handedness !== det.handedness && track.handednessConfidence > 0.85 && det.handednessConfidence > 0.85) {
-            cost += 0.25;
+          // Scale-normalized distance (accounts for depth/distance differences)
+          const normDistPalm = distPalm / track.palmScale;
+          const normDistWrist = distWrist / track.palmScale;
+          let cost = 0.6 * normDistPalm + 0.4 * normDistWrist;
+
+          // Handedness consistency penalty
+          if (track.handedness !== det.handedness) {
+            cost += 0.85; // Heavy penalty against swapping Left/Right hands
           }
 
-          if (cost <= this.MATCHING_DISTANCE_THRESHOLD) {
+          // Dynamic matching threshold scaled to palm size
+          const threshold = (this.BASE_MATCHING_DISTANCE_THRESHOLD / track.palmScale) * 1.35;
+          if (cost <= threshold) {
             candidates.push({ trackIdx: t, detIdx: d, cost });
           }
         }
@@ -108,18 +158,24 @@ export class PersistentHandTracker {
           // Update active track
           const track = this.activeTracks[c.trackIdx];
           const det = incomingDetections[c.detIdx];
-          const smoothed = track.filter.filter(det.landmarks, timestamp);
 
-          const dt = Math.max(0.016, (timestamp - (track as any)._lastTimestamp || 33) / 1000);
-          (track as any)._lastTimestamp = timestamp;
+          if (track.isCoasting) {
+            this.reacquisitionsCount++;
+          }
 
+          const dt = Math.max(0.016, (timestamp - track.lastDetectionTimestamp) / 1000.0);
           track.velocity = {
             x: (det.palmCenter.x - track.palmCenter.x) / dt,
             y: (det.palmCenter.y - track.palmCenter.y) / dt,
             z: ((det.palmCenter.z ?? 0) - (track.palmCenter.z ?? 0)) / dt
           };
 
+          // Filter with anatomical joint tuning
+          const smoothed = track.filter.filter(det.landmarks, timestamp, det.palmScale);
+
           track.rawLandmarks = det.landmarks;
+          track.observedLandmarks = det.landmarks;
+          track.predictedLandmarks = [];
           track.smoothedLandmarks = smoothed;
           track.wrist = smoothed[0];
           track.palmCenter = this.computePalmCenter(smoothed);
@@ -129,6 +185,13 @@ export class PersistentHandTracker {
           track.framesTracked++;
           track.framesMissing = 0;
           track.isCoasting = false;
+          track.lastDetectionTimestamp = timestamp;
+
+          // Anatomical integrity assessment
+          track.integrityReport = AnatomicalHandModel.evaluateIntegrity(
+            det.landmarks,
+            track.smoothedLandmarks
+          );
         }
       }
     }
@@ -137,8 +200,9 @@ export class PersistentHandTracker {
     for (let d = 0; d < incomingDetections.length; d++) {
       if (!matchedIncoming.has(d)) {
         const det = incomingDetections[d];
-        const filter = new HandSkeletonFilter(0.85, 0.009, 1.0);
-        const smoothed = filter.filter(det.landmarks, timestamp);
+        const filter = new HandSkeletonFilter();
+        const smoothed = filter.filter(det.landmarks, timestamp, det.palmScale);
+        const integrity = AnatomicalHandModel.evaluateIntegrity(det.landmarks);
 
         const newTrack: PersistentHandTrack = {
           trackId: this.nextTrackId++,
@@ -146,6 +210,8 @@ export class PersistentHandTracker {
           handedness: det.handedness,
           handednessConfidence: det.handednessConfidence,
           rawLandmarks: det.landmarks,
+          observedLandmarks: det.landmarks,
+          predictedLandmarks: [],
           smoothedLandmarks: smoothed,
           wrist: smoothed[0],
           palmCenter: this.computePalmCenter(smoothed),
@@ -154,14 +220,16 @@ export class PersistentHandTracker {
           framesTracked: 1,
           framesMissing: 0,
           isCoasting: false,
-          filter
+          filter,
+          integrityReport: integrity,
+          lastDetectionTimestamp: timestamp
         };
-        (newTrack as any)._lastTimestamp = timestamp;
+
         this.activeTracks.push(newTrack);
       }
     }
 
-    // 3. Handle unmatched active tracks -> coast or prune
+    // 3. Handle unmatched active tracks -> Motion-assisted coasting or prune
     const survivingTracks: PersistentHandTrack[] = [];
     for (let t = 0; t < this.activeTracks.length; t++) {
       const track = this.activeTracks[t];
@@ -171,6 +239,27 @@ export class PersistentHandTracker {
         track.framesMissing++;
         if (track.framesMissing <= this.MAX_COASTING_FRAMES) {
           track.isCoasting = true;
+
+          // Motion-Aware Kalman/Linear Extrapolation for PREDICTED landmarks
+          const dt = Math.max(0.016, (timestamp - track.lastDetectionTimestamp) / 1000.0);
+          const damping = Math.pow(0.85, track.framesMissing); // Damp velocity over time
+          const dx = track.velocity.x * dt * damping;
+          const dy = track.velocity.y * dt * damping;
+          const dz = track.velocity.z * dt * damping;
+
+          // Project all 21 landmarks according to hand velocity
+          const predicted = track.smoothedLandmarks.map((pt) => ({
+            x: Math.max(0, Math.min(1.0, pt.x + dx)),
+            y: Math.max(0, Math.min(1.0, pt.y + dy)),
+            z: (pt.z ?? 0) + dz,
+            provenance: 'PREDICTED' as const
+          }));
+
+          track.predictedLandmarks = predicted;
+          track.smoothedLandmarks = predicted;
+          track.wrist = predicted[0];
+          track.palmCenter = this.computePalmCenter(predicted);
+
           survivingTracks.push(track);
         } else {
           track.filter.reset();
@@ -178,30 +267,39 @@ export class PersistentHandTracker {
       }
     }
 
-    // 4. Assign Roles (Dominant vs Base) stably
+    // 4. Stable Role Arbitration (Dominant vs Base)
     if (survivingTracks.length === 1) {
       survivingTracks[0].role = 'Dominant';
     } else if (survivingTracks.length >= 2) {
-      // In mirrored selfie camera: Right hand of signer appears on right side of viewer
-      // The hand with more isolated/extended index finger or Right hand is Dominant
       const t0 = survivingTracks[0];
       const t1 = survivingTracks[1];
 
-      const iso0 = this.dist2D(t0.smoothedLandmarks[8], t0.smoothedLandmarks[0]) / (this.dist2D(t0.smoothedLandmarks[12], t0.smoothedLandmarks[0]) || 1);
-      const iso1 = this.dist2D(t1.smoothedLandmarks[8], t1.smoothedLandmarks[0]) / (this.dist2D(t1.smoothedLandmarks[12], t1.smoothedLandmarks[0]) || 1);
+      const prevT0Role = t0.role;
+      const prevT1Role = t1.role;
 
+      // In mirrored selfie camera:
+      // The hand with more active finger articulation or Right hand is Dominant
       if (t0.handedness === 'Right' && t1.handedness === 'Left') {
         t0.role = 'Dominant';
         t1.role = 'Base';
       } else if (t0.handedness === 'Left' && t1.handedness === 'Right') {
         t0.role = 'Base';
         t1.role = 'Dominant';
-      } else if (iso1 > iso0) {
-        t0.role = 'Base';
-        t1.role = 'Dominant';
       } else {
-        t0.role = 'Dominant';
-        t1.role = 'Base';
+        // Evaluate kinematic finger extension activity
+        const act0 = t0.integrityReport?.perFingerTelemetry?.[1]?.extensionRatio ?? 0.5;
+        const act1 = t1.integrityReport?.perFingerTelemetry?.[1]?.extensionRatio ?? 0.5;
+        if (act1 > act0 + 0.25) {
+          t0.role = 'Base';
+          t1.role = 'Dominant';
+        } else if (act0 > act1 + 0.25) {
+          t0.role = 'Dominant';
+          t1.role = 'Base';
+        }
+      }
+
+      if (t0.role !== prevT0Role && t0.framesTracked > 15) {
+        this.identitySwitchesCount++;
       }
     }
 
@@ -212,10 +310,23 @@ export class PersistentHandTracker {
   public reset() {
     this.activeTracks.forEach((t) => t.filter.reset());
     this.activeTracks = [];
+    this.identitySwitchesCount = 0;
+    this.reacquisitionsCount = 0;
+    this.totalFramesProcessed = 0;
   }
 
   public getTracks(): PersistentHandTrack[] {
     return this.activeTracks;
+  }
+
+  public getDiagnosticTelemetry(): TrackerDiagnosticTelemetry {
+    return {
+      activeTracksCount: this.activeTracks.length,
+      identitySwitchesCount: this.identitySwitchesCount,
+      reacquisitionsCount: this.reacquisitionsCount,
+      totalFramesProcessed: this.totalFramesProcessed,
+      coastingTracksCount: this.activeTracks.filter((t) => t.isCoasting).length
+    };
   }
 }
 

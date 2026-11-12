@@ -1,4 +1,5 @@
-import { PersistentHandTrack } from './persistentHandTracker';
+import { PersistentHandTrack, persistentHandTracker } from './persistentHandTracker';
+import { FingerTelemetry } from './anatomicalHandModel';
 
 export type TrackingStatusState =
   | 'SEARCHING'
@@ -14,12 +15,16 @@ export interface TrackingQualityReport {
   status: TrackingStatusState;
   qualityScore: number; // 0 - 100
   stabilityScore: number; // 0 - 100
+  anatomicalIntegrityScore: number; // 0 - 100
   framing: FramingQuality;
   jitterVariance: number;
   trackedHandsCount: number;
   continuityFrames: number;
   isReliableForInference: boolean;
   recommendation: string;
+  perFingerTelemetry: FingerTelemetry[];
+  identitySwitchesCount: number;
+  reacquisitionsCount: number;
 }
 
 export class TrackingQualityEngine {
@@ -31,6 +36,7 @@ export class TrackingQualityEngine {
 
   public evaluate(tracks: PersistentHandTrack[], videoWidth: number = 640, videoHeight: number = 480): TrackingQualityReport {
     const handCount = tracks.length;
+    const diag = persistentHandTracker.getDiagnosticTelemetry();
 
     // 1. Evaluate Detection State Transitions
     let status: TrackingStatusState = 'SEARCHING';
@@ -47,7 +53,7 @@ export class TrackingQualityEngine {
       this.consecutiveTrackingFrames++;
       if (this.previousTrackCount === 0) {
         status = 'HAND DETECTED';
-      } else if (this.previousTrackCount > 0 && this.consecutiveTrackingFrames < 5) {
+      } else if (this.previousTrackCount > 0 && this.consecutiveTrackingFrames < 4) {
         status = 'REACQUIRING';
       } else {
         status = 'TRACKING';
@@ -60,12 +66,16 @@ export class TrackingQualityEngine {
         status,
         qualityScore: 0,
         stabilityScore: 0,
+        anatomicalIntegrityScore: 0,
         framing: 'TOO_FAR',
         jitterVariance: 0,
         trackedHandsCount: 0,
         continuityFrames: 0,
         isReliableForInference: false,
-        recommendation: 'Position one or both hands within the camera viewfinder.'
+        recommendation: 'Position one or both hands within the camera viewfinder.',
+        perFingerTelemetry: [],
+        identitySwitchesCount: diag.identitySwitchesCount,
+        reacquisitionsCount: diag.reacquisitionsCount
       };
     }
 
@@ -77,9 +87,9 @@ export class TrackingQualityEngine {
 
     for (const track of tracks) {
       avgPalmScale += track.palmScale;
-      // Check if any landmark is within 3% of the image boundary
+      // Check if any landmark is within 3.5% of the image boundary
       for (const p of track.smoothedLandmarks) {
-        if (p.x < 0.03 || p.x > 0.97 || p.y < 0.03 || p.y > 0.97) {
+        if (p.x < 0.035 || p.x > 0.965 || p.y < 0.035 || p.y > 0.965) {
           isEdgeClipped = true;
           break;
         }
@@ -89,7 +99,7 @@ export class TrackingQualityEngine {
 
     if (avgPalmScale > 0.38) {
       isTooClose = true;
-    } else if (avgPalmScale < 0.06) {
+    } else if (avgPalmScale < 0.05) {
       isTooFar = true;
     }
 
@@ -119,7 +129,18 @@ export class TrackingQualityEngine {
     // Stability score (100 = completely motionless, 0 = violent shaking)
     const stabilityScore = Math.max(0, Math.min(100, Math.round(100 - Math.min(100, jitterVariance * 4000 + meanDisp * 20))));
 
-    // 4. Evaluate Coasting / Occlusion Degradation
+    // 4. Biomechanical & Anatomical Integrity
+    let avgIntegrityScore = 0;
+    let combinedFingerTelemetry: FingerTelemetry[] = [];
+    for (const track of tracks) {
+      avgIntegrityScore += track.integrityReport?.integrityScore ?? 85;
+      if (track.role === 'Dominant' || tracks.length === 1) {
+        combinedFingerTelemetry = track.integrityReport?.perFingerTelemetry ?? [];
+      }
+    }
+    avgIntegrityScore /= handCount;
+
+    // 5. Evaluate Coasting / Occlusion Degradation
     let hasCoastingTrack = false;
     for (const track of tracks) {
       if (track.isCoasting) {
@@ -128,48 +149,67 @@ export class TrackingQualityEngine {
       }
     }
 
-    if (hasCoastingTrack || isEdgeClipped || framing !== 'OPTIMAL' || stabilityScore < 35) {
+    if (hasCoastingTrack || isEdgeClipped || framing !== 'OPTIMAL' || stabilityScore < 35 || avgIntegrityScore < 60) {
       if (status === 'TRACKING') {
         status = 'TRACKING DEGRADED';
       }
     }
 
-    // 5. Compute Aggregate Optical Quality Score (0 - 100)
+    // 6. Compute Aggregate Optical Quality Score (0 - 100)
     let qualityScore = 90;
     if (framing === 'OPTIMAL') qualityScore += 10;
     if (isEdgeClipped) qualityScore -= 30;
     if (isTooClose) qualityScore -= 20;
     if (isTooFar) qualityScore -= 25;
     if (hasCoastingTrack) qualityScore -= 25;
-    qualityScore = Math.max(10, Math.min(100, Math.round(qualityScore * 0.6 + stabilityScore * 0.4)));
+    if (avgIntegrityScore < 70) qualityScore -= 20;
 
-    // 6. Generate Contextual Guidance
+    qualityScore = Math.max(
+      10,
+      Math.min(
+        100,
+        Math.round(qualityScore * 0.4 + stabilityScore * 0.35 + avgIntegrityScore * 0.25)
+      )
+    );
+
+    // 7. Contextual Guidance Engine
     let recommendation = 'Optical tracking optimal.';
     if (isEdgeClipped) {
       recommendation = 'Hand partially clipped at frame boundary. Shift towards center.';
     } else if (isTooClose) {
-      recommendation = 'Hand too close to camera sensor. Step back slightly.';
+      recommendation = 'Hand too close to sensor. Move hand back slightly.';
     } else if (isTooFar) {
-      recommendation = 'Hand too far from camera. Move closer to viewfinder.';
+      recommendation = 'Hand too far from sensor. Move hand closer into viewfinder.';
     } else if (hasCoastingTrack) {
-      recommendation = 'Temporary joint occlusion detected. Hold fingers visible.';
-    } else if (stabilityScore < 40) {
-      recommendation = 'High kinetic motion. Hold sign steady to lock recognition.';
+      recommendation = 'Partial finger occlusion detected. Maintain clear line of sight.';
+    } else if (stabilityScore < 45) {
+      recommendation = 'Hold sign steady to allow optical classifier lock.';
+    } else if (avgIntegrityScore < 65) {
+      recommendation = 'Unusual hand angle detected. Face palm squarely towards lens.';
     }
 
     const isReliableForInference =
-      status === 'TRACKING' && framing !== 'EDGE_CLIPPED' && !isTooFar && !hasCoastingTrack;
+      status === 'TRACKING' &&
+      framing === 'OPTIMAL' &&
+      stabilityScore >= 40 &&
+      avgIntegrityScore >= 60 &&
+      !hasCoastingTrack &&
+      this.consecutiveTrackingFrames >= 4;
 
     return {
       status,
       qualityScore,
       stabilityScore,
+      anatomicalIntegrityScore: Math.round(avgIntegrityScore),
       framing,
-      jitterVariance: Number(jitterVariance.toFixed(5)),
+      jitterVariance: Number(jitterVariance.toFixed(6)),
       trackedHandsCount: handCount,
       continuityFrames: this.consecutiveTrackingFrames,
       isReliableForInference,
-      recommendation
+      recommendation,
+      perFingerTelemetry: combinedFingerTelemetry,
+      identitySwitchesCount: diag.identitySwitchesCount,
+      reacquisitionsCount: diag.reacquisitionsCount
     };
   }
 
