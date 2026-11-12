@@ -20,7 +20,11 @@ import {
   Terminal,
   Crosshair,
   Shield,
-  Play
+  Play,
+  FlaskConical,
+  BarChart3,
+  TrendingDown,
+  Info
 } from 'lucide-react';
 import { webMediaPipe } from '../services/webMediaPipeService';
 import {
@@ -33,6 +37,7 @@ import { PersistentHandTrack } from '../services/persistentHandTracker';
 import { TrackingQualityReport, TrackingStatusState } from '../services/trackingQualityEngine';
 import { speechService } from '../services/speechService';
 import { HAND_CONNECTIONS } from '../services/cameraLandmarkDetector';
+import { TrackingBenchmarkLab, ComparativeBenchmarkResult } from '../services/trackingBenchmarkLab';
 
 // Reference guide for supported alphabet signs
 const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string }> = {
@@ -88,6 +93,9 @@ export function LiveISLAlphabetRecognizer() {
   const [showDiagnosticHUD, setShowDiagnosticHUD] = useState<boolean>(false);
   const [showReferenceDrawer, setShowReferenceDrawer] = useState<boolean>(false);
   const [showCalibrationDeck, setShowCalibrationDeck] = useState<boolean>(false);
+  const [showBenchmarkLab, setShowBenchmarkLab] = useState<boolean>(false);
+  const [benchmarkReport, setBenchmarkReport] = useState<ComparativeBenchmarkResult | null>(null);
+  const [isRunningBenchmark, setIsRunningBenchmark] = useState<boolean>(false);
 
   // Scientific Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
@@ -97,12 +105,16 @@ export function LiveISLAlphabetRecognizer() {
     status: 'SEARCHING',
     qualityScore: 0,
     stabilityScore: 0,
+    anatomicalIntegrityScore: 0,
     framing: 'TOO_FAR',
     jitterVariance: 0,
     trackedHandsCount: 0,
     continuityFrames: 0,
     isReliableForInference: false,
-    recommendation: 'Position hands in camera viewfinder.'
+    recommendation: 'Position hands in camera viewfinder.',
+    perFingerTelemetry: [],
+    identitySwitchesCount: 0,
+    reacquisitionsCount: 0
   });
 
   // Neural Recognition & Stability Lock
@@ -281,12 +293,31 @@ export function LiveISLAlphabetRecognizer() {
     tracks.forEach((track) => {
       const lm = track.smoothedLandmarks;
       const isDominant = track.role === 'Dominant';
+      const isCoasting = track.isCoasting;
       const boneStroke = isLocked
         ? 'rgba(16, 185, 129, 0.9)'
+        : isCoasting
+        ? 'rgba(245, 158, 11, 0.75)'
         : isDominant
         ? 'rgba(56, 189, 248, 0.85)'
         : 'rgba(245, 158, 11, 0.85)';
-      const jointFill = isLocked ? '#34d399' : isDominant ? '#38bdf8' : '#fbbf24';
+      const jointFill = isLocked ? '#34d399' : isCoasting ? '#f59e0b' : isDominant ? '#38bdf8' : '#fbbf24';
+
+      // Diagnostic View: Render Raw OBSERVED landmarks as subtle cyan crosshairs
+      if (showDiagnostics && track.observedLandmarks && track.observedLandmarks.length === 21 && !isCoasting) {
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.lineWidth = 1;
+        track.observedLandmarks.forEach((obs) => {
+          const ox = obs.x * width;
+          const oy = obs.y * height;
+          ctx.beginPath();
+          ctx.moveTo(ox - 3, oy);
+          ctx.lineTo(ox + 3, oy);
+          ctx.moveTo(ox, oy - 3);
+          ctx.lineTo(ox, oy + 3);
+          ctx.stroke();
+        });
+      }
 
       // Palm Membrane Polygon (Wrist -> Thumb CMC -> Index MCP -> Mid MCP -> Ring MCP -> Pinky MCP -> Wrist)
       ctx.beginPath();
@@ -309,45 +340,77 @@ export function LiveISLAlphabetRecognizer() {
           const isMetacarpal = [0, 1, 5, 9, 13, 17].includes(start) && [1, 2, 5, 9, 13, 17].includes(end);
           ctx.lineWidth = isMetacarpal ? 3.2 : 2.0;
           ctx.strokeStyle = boneStroke;
+          if (isCoasting) {
+            ctx.setLineDash([3, 3]);
+          } else {
+            ctx.setLineDash([]);
+          }
           ctx.beginPath();
           ctx.moveTo(p1.x * width, p1.y * height);
           ctx.lineTo(p2.x * width, p2.y * height);
           ctx.stroke();
         }
       }
+      ctx.setLineDash([]);
 
       // Joints & Fingertip Markers
       for (let i = 0; i < lm.length; i++) {
         const p = lm[i];
         const isTip = [4, 8, 12, 16, 20].includes(i);
         const radius = isTip ? 4.5 : 2.5;
+        const isPredicted = p.provenance === 'PREDICTED' || isCoasting;
 
         ctx.beginPath();
         ctx.arc(p.x * width, p.y * height, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = isTip ? '#ffffff' : jointFill;
-        ctx.fill();
-        ctx.strokeStyle = '#07090d';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        if (isPredicted) {
+          ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = isTip ? '#ffffff' : jointFill;
+          ctx.fill();
+          ctx.strokeStyle = '#07090d';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
 
         // Optional Diagnostic View: Render Landmark IDs (0..20)
         if (showDiagnostics) {
-          ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+          ctx.fillStyle = isPredicted ? 'rgba(245, 158, 11, 0.9)' : 'rgba(226, 232, 240, 0.85)';
           ctx.font = '500 8px monospace';
-          ctx.fillText(`${i}`, p.x * width + 5, p.y * height - 3);
+          ctx.fillText(`${i}${isPredicted ? '*' : ''}`, p.x * width + 5, p.y * height - 3);
         }
       }
 
       // Track Identity & Role HUD Tag
       const wrist = lm[0];
-      ctx.fillStyle = isDominant ? '#38bdf8' : '#fbbf24';
+      ctx.fillStyle = isCoasting ? '#f59e0b' : isDominant ? '#38bdf8' : '#fbbf24';
       ctx.font = 'bold 9px monospace';
       ctx.fillText(
-        `TRK_${track.trackId}:${isDominant ? 'DOMINANT' : 'BASE'} (${track.handedness})`,
+        `TRK_${track.trackId}:${isCoasting ? 'COASTING' : isDominant ? 'DOMINANT' : 'BASE'} (${track.handedness})`,
         wrist.x * width - 40,
         wrist.y * height + 18
       );
     });
+
+    // Diagnostic Mode Provenance Legend Overlay (Top Right)
+    if (showDiagnostics) {
+      ctx.fillStyle = 'rgba(10, 13, 20, 0.85)';
+      ctx.strokeStyle = '#1e2430';
+      ctx.lineWidth = 1;
+      ctx.fillRect(width - 150, 12, 138, 54);
+      ctx.strokeRect(width - 150, 12, 138, 54);
+
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('● FILTERED (1€ Tuned)', width - 142, 24);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('+ OBSERVED (Detector)', width - 142, 38);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('○ PREDICTED (Coasting)', width - 142, 52);
+    }
 
     // 3. Two-Hand Inter-Contact Radar Aura (Vowel Touch Point)
     if (tracks.length >= 2) {
@@ -429,12 +492,16 @@ export function LiveISLAlphabetRecognizer() {
         status: 'SEARCHING',
         qualityScore: 0,
         stabilityScore: 0,
+        anatomicalIntegrityScore: 0,
         framing: 'TOO_FAR',
         jitterVariance: 0,
         trackedHandsCount: 0,
         continuityFrames: 0,
         isReliableForInference: false,
-        recommendation: 'Position hands in viewfinder.'
+        recommendation: 'Position hands in viewfinder.',
+        perFingerTelemetry: [],
+        identitySwitchesCount: 0,
+        reacquisitionsCount: 0
       }
     };
 
@@ -605,6 +672,15 @@ export function LiveISLAlphabetRecognizer() {
     });
   };
 
+  const runBenchmarkSuite = () => {
+    setIsRunningBenchmark(true);
+    setTimeout(() => {
+      const res = TrackingBenchmarkLab.runComparativeBenchmark();
+      setBenchmarkReport(res);
+      setIsRunningBenchmark(false);
+    }, 50);
+  };
+
   const activeSign =
     currentResult?.sign !== 'NEUTRAL' && (currentResult?.confidence ?? 0) >= CONFIDENCE_MINIMUM
       ? currentResult?.sign
@@ -654,6 +730,18 @@ export function LiveISLAlphabetRecognizer() {
             >
               <Gauge className="w-3.5 h-3.5 text-amber-400" />
               <span>CALIBRATION</span>
+            </button>
+
+            <button
+              onClick={() => setShowBenchmarkLab(!showBenchmarkLab)}
+              className={`px-2 py-1 rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showBenchmarkLab
+                  ? 'border-emerald-800 bg-emerald-950/80 text-emerald-300 font-bold'
+                  : 'border-[#1e2430] bg-[#10141d] text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FlaskConical className="w-3.5 h-3.5 text-emerald-400" />
+              <span>BENCHMARK LAB</span>
             </button>
 
             <button
@@ -762,6 +850,184 @@ export function LiveISLAlphabetRecognizer() {
                 <div className="p-2 rounded bg-[#090b10] border border-[#181d26]">
                   <span className="text-[10px] text-slate-500">JITTER VAR</span>
                   <p className="text-base font-bold text-amber-400">{calibrationResults.avgJitter}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Precision Tracking Benchmark Lab Deck (Collapsible) */}
+        {showBenchmarkLab && (
+          <div className="p-4 rounded border border-[#1f2636] bg-[#0c1017] space-y-4 font-mono text-xs animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#1b212c] pb-2">
+              <span className="text-emerald-400 font-bold tracking-wider flex items-center gap-2">
+                <FlaskConical className="w-4 h-4 text-emerald-400" />
+                PRECISION TRACKING RESEARCH BENCHMARK LAB
+              </span>
+              <span className="text-[11px] text-slate-400 font-sans">
+                Deterministic Ground-Truth 90-Frame Benchmark (Static Jitter, High-Speed Translation, 3-Frame Occlusion)
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-[11px] text-slate-400 font-sans max-w-xl">
+                Executes an automated comparative test across 90 annotated ground-truth keypoint frames to evaluate
+                Mean Absolute Error (MAE), Percentage of Correct Keypoints (PCK@10/20), Fingertip precision, and recovery continuity.
+              </div>
+
+              <button
+                onClick={runBenchmarkSuite}
+                disabled={isRunningBenchmark}
+                className="px-4 py-2 rounded border border-emerald-600 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-40 text-emerald-300 font-bold flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                {isRunningBenchmark ? (
+                  <>
+                    <Activity className="w-4 h-4 animate-spin text-emerald-400" />
+                    <span>BENCHMARKING 90 FRAMES...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 text-emerald-400" />
+                    <span>RUN COMPARATIVE BENCHMARK</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Benchmark Report Results */}
+            {benchmarkReport && (
+              <div className="space-y-3 pt-2 border-t border-[#181e28]">
+                {/* Improvement Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <TrendingDown className="w-3 h-3 text-emerald-400" />
+                      FINGERTIP PRECISION GAIN
+                    </span>
+                    <p className="text-lg font-bold text-emerald-400">
+                      +{benchmarkReport.improvementMetrics.fingertipMAEReductionPct}%
+                    </p>
+                    <span className="text-[9px] text-slate-500">
+                      {benchmarkReport.baselineCommit.fingertipMAE}px → {benchmarkReport.newPrecisionEngine.fingertipMAE}px
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
+                    <span className="text-[10px] text-slate-400">PCK@10px ACCURACY GAIN</span>
+                    <p className="text-lg font-bold text-cyan-400">
+                      +{benchmarkReport.improvementMetrics.pck10GainPct}%
+                    </p>
+                    <span className="text-[9px] text-slate-500">Keypoints ≤10px from GT</span>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
+                    <span className="text-[10px] text-slate-400">TRACKING CONTINUITY</span>
+                    <p className="text-lg font-bold text-slate-200">
+                      {benchmarkReport.newPrecisionEngine.continuityRate}%
+                    </p>
+                    <span className="text-[9px] text-slate-500">Survives sensor dropouts</span>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[#090c12] border border-emerald-900/40">
+                    <span className="text-[10px] text-slate-400">PIPELINE OVERHEAD</span>
+                    <p className="text-lg font-bold text-amber-400">
+                      {benchmarkReport.newPrecisionEngine.avgProcessingTimeMs} ms
+                    </p>
+                    <span className="text-[9px] text-slate-500">&lt;0.3ms frame budget</span>
+                  </div>
+                </div>
+
+                {/* Comparative Table */}
+                <div className="overflow-x-auto rounded border border-[#181d26] bg-[#07090e]">
+                  <table className="w-full text-left text-[11px] font-mono">
+                    <thead className="bg-[#0e121a] text-slate-400 border-b border-[#181d26]">
+                      <tr>
+                        <th className="p-2">PIPELINE ARCHITECTURE</th>
+                        <th className="p-2">OVERALL MAE</th>
+                        <th className="p-2">FINGERTIP MAE</th>
+                        <th className="p-2">PCK @ 10px</th>
+                        <th className="p-2">PCK @ 20px</th>
+                        <th className="p-2">CONTINUITY</th>
+                        <th className="p-2">OVERHEAD</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#141822]">
+                      <tr className="text-slate-400 hover:bg-[#0c1017]">
+                        <td className="p-2 font-bold text-slate-300">{benchmarkReport.rawMediaPipe.pipelineName}</td>
+                        <td className="p-2">{benchmarkReport.rawMediaPipe.overallMAE} px</td>
+                        <td className="p-2">{benchmarkReport.rawMediaPipe.fingertipMAE} px</td>
+                        <td className="p-2">{benchmarkReport.rawMediaPipe.overallPCK10}%</td>
+                        <td className="p-2">{benchmarkReport.rawMediaPipe.overallPCK20}%</td>
+                        <td className="p-2 text-rose-400">{benchmarkReport.rawMediaPipe.continuityRate}%</td>
+                        <td className="p-2">{benchmarkReport.rawMediaPipe.avgProcessingTimeMs} ms</td>
+                      </tr>
+                      <tr className="text-slate-400 hover:bg-[#0c1017]">
+                        <td className="p-2 font-bold text-amber-300">{benchmarkReport.baselineCommit.pipelineName}</td>
+                        <td className="p-2">{benchmarkReport.baselineCommit.overallMAE} px</td>
+                        <td className="p-2">{benchmarkReport.baselineCommit.fingertipMAE} px</td>
+                        <td className="p-2">{benchmarkReport.baselineCommit.overallPCK10}%</td>
+                        <td className="p-2">{benchmarkReport.baselineCommit.overallPCK20}%</td>
+                        <td className="p-2">{benchmarkReport.baselineCommit.continuityRate}%</td>
+                        <td className="p-2">{benchmarkReport.baselineCommit.avgProcessingTimeMs} ms</td>
+                      </tr>
+                      <tr className="bg-emerald-950/20 text-emerald-300 font-bold border-t border-emerald-900/60">
+                        <td className="p-2 text-emerald-400 flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5" />
+                          {benchmarkReport.newPrecisionEngine.pipelineName}
+                        </td>
+                        <td className="p-2">{benchmarkReport.newPrecisionEngine.overallMAE} px</td>
+                        <td className="p-2 text-white">{benchmarkReport.newPrecisionEngine.fingertipMAE} px</td>
+                        <td className="p-2">{benchmarkReport.newPrecisionEngine.overallPCK10}%</td>
+                        <td className="p-2">{benchmarkReport.newPrecisionEngine.overallPCK20}%</td>
+                        <td className="p-2 text-emerald-400">{benchmarkReport.newPrecisionEngine.continuityRate}%</td>
+                        <td className="p-2">{benchmarkReport.newPrecisionEngine.avgProcessingTimeMs} ms</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Per-Finger Breakdown */}
+                <div className="p-2.5 rounded border border-[#181d26] bg-[#07090e] space-y-1.5">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">
+                    PER-FINGER MEAN ABSOLUTE ERROR (BASELINE bd86151 vs NEW HYBRID PRECISION)
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
+                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
+                      <span className="text-slate-500">THUMB TIP (J4)</span>
+                      <p className="font-bold text-emerald-400">
+                        {benchmarkReport.newPrecisionEngine.perFingerMAE.thumb} px
+                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.thumb}px)</span>
+                      </p>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
+                      <span className="text-slate-500">INDEX TIP (J8)</span>
+                      <p className="font-bold text-emerald-400">
+                        {benchmarkReport.newPrecisionEngine.perFingerMAE.index} px
+                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.index}px)</span>
+                      </p>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
+                      <span className="text-slate-500">MIDDLE (J12)</span>
+                      <p className="font-bold text-emerald-400">
+                        {benchmarkReport.newPrecisionEngine.perFingerMAE.middle} px
+                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.middle}px)</span>
+                      </p>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
+                      <span className="text-slate-500">RING (J16)</span>
+                      <p className="font-bold text-emerald-400">
+                        {benchmarkReport.newPrecisionEngine.perFingerMAE.ring} px
+                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.ring}px)</span>
+                      </p>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#0b0e14] border border-[#161a22]">
+                      <span className="text-slate-500">PINKY (J20)</span>
+                      <p className="font-bold text-emerald-400">
+                        {benchmarkReport.newPrecisionEngine.perFingerMAE.pinky} px
+                        <span className="text-slate-500 font-normal ml-1">({benchmarkReport.baselineCommit.perFingerMAE.pinky}px)</span>
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -953,6 +1219,53 @@ export function LiveISLAlphabetRecognizer() {
                   <p className="font-bold text-amber-400">{trackingReport.jitterVariance}</p>
                 </div>
               </div>
+
+              {/* Extended Diagnostic Telemetry Deck */}
+              {showDiagnosticHUD && (
+                <div className="space-y-2 pt-2 border-t border-[#161c26] text-[10px]">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
+                      <span className="text-slate-500">BIOMECH</span>
+                      <p className="font-bold text-emerald-400">{trackingReport.anatomicalIntegrityScore}%</p>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
+                      <span className="text-slate-500">ID SWAPS</span>
+                      <p className="font-bold text-slate-300">{trackingReport.identitySwitchesCount}</p>
+                    </div>
+                    <div className="p-1.5 rounded bg-[#07090e] border border-[#181d26]">
+                      <span className="text-slate-500">REACQUIRED</span>
+                      <p className="font-bold text-cyan-400">{trackingReport.reacquisitionsCount}</p>
+                    </div>
+                  </div>
+
+                  {/* Per-Finger Telemetry */}
+                  {trackingReport.perFingerTelemetry.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[9px] text-slate-500 uppercase font-bold">PER-FINGER STABILITY</span>
+                      <div className="space-y-1">
+                        {trackingReport.perFingerTelemetry.map((f) => (
+                          <div key={f.name} className="flex items-center justify-between gap-2">
+                            <span className="text-[9px] text-slate-400 w-12">{f.name}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-[#121620] overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-100 ${
+                                  f.stabilityScore >= 70
+                                    ? 'bg-emerald-400'
+                                    : f.stabilityScore >= 40
+                                    ? 'bg-cyan-400'
+                                    : 'bg-amber-400'
+                                }`}
+                                style={{ width: `${f.stabilityScore}%` }}
+                              />
+                            </div>
+                            <span className="text-[9px] text-slate-400 w-6 text-right">{f.stabilityScore}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 2. Neural Recognition Readout Panel */}

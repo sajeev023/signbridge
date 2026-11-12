@@ -1,16 +1,21 @@
 /**
- * One Euro Filter (1€ Filter) for adaptive low-pass filtering of noisy signals.
- * Casiez, G., Roussel, N. and Vogel, F. (2012).
- * 1 € Filter: A Simple Speed-based Low-pass Filter for Noisy and Lag-sensitive Everyday Interaction.
- * ACM Conference on Human Factors in Computing Systems (CHI '12).
+ * Precision Anatomical Filter Engine
+ * Implements speed-adaptive One Euro filtering with anatomical joint tuning,
+ * outlier jump rejection, and explicit landmark provenance tracking.
  *
- * Provides near-zero lag during rapid movement while achieving jitter-free stability at low velocity.
+ * Grounded in: Casiez, G., Roussel, N. and Vogel, F. (CHI '12).
  */
 
-export interface Point3D {
-  x: number;
-  y: number;
-  z: number;
+import { getAnatomicalFilterConfig } from './anatomicalHandModel';
+
+export type LandmarkProvenance = 'OBSERVED' | 'PREDICTED' | 'FILTERED';
+
+export interface ProvenancedLandmark extends Point3D {
+  provenance: LandmarkProvenance;
+  rawX?: number;
+  rawY?: number;
+  rawZ?: number;
+  confidence?: number;
 }
 
 class LowPassFilter {
@@ -49,12 +54,7 @@ export class OneEuroFilter1D {
   private dxFilter: LowPassFilter;
   private lastTime: number = -1;
 
-  /**
-   * @param minCutoff Minimum cutoff frequency in Hz (smaller = more filtering at low speed, less jitter). Default: 1.0
-   * @param beta Speed coefficient (larger = less lag during rapid movement). Default: 0.007
-   * @param dCutoff Cutoff frequency for derivative calculation in Hz. Default: 1.0
-   */
-  constructor(minCutoff: number = 0.9, beta: number = 0.008, dCutoff: number = 1.0) {
+  constructor(minCutoff: number = 0.85, beta: number = 0.009, dCutoff: number = 1.0) {
     this.minCutoff = minCutoff;
     this.beta = beta;
     this.dCutoff = dCutoff;
@@ -100,22 +100,43 @@ export class OneEuroFilter3D {
   private xf: OneEuroFilter1D;
   private yf: OneEuroFilter1D;
   private zf: OneEuroFilter1D;
+  private lastFiltered: Point3D | null = null;
 
-  constructor(minCutoff: number = 0.9, beta: number = 0.008, dCutoff: number = 1.0) {
+  constructor(minCutoff: number = 0.85, beta: number = 0.009, dCutoff: number = 1.0) {
     this.xf = new OneEuroFilter1D(minCutoff, beta, dCutoff);
     this.yf = new OneEuroFilter1D(minCutoff, beta, dCutoff);
     this.zf = new OneEuroFilter1D(minCutoff, beta, dCutoff);
   }
 
-  public filter(p: Point3D, timestamp: number): Point3D {
-    return {
-      x: this.xf.filter(p.x, timestamp),
-      y: this.yf.filter(p.y, timestamp),
-      z: this.zf.filter(p.z ?? 0, timestamp)
+  public filter(p: Point3D, timestamp: number, maxJumpThreshold: number = 0.35): Point3D {
+    let target = p;
+
+    // Outlier jump rejection: clamp non-physical spatial spikes (e.g. sensor/detector glitch)
+    if (this.lastFiltered) {
+      const dx = target.x - this.lastFiltered.x;
+      const dy = target.y - this.lastFiltered.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > maxJumpThreshold) {
+        const factor = maxJumpThreshold / dist;
+        target = {
+          x: this.lastFiltered.x + dx * factor,
+          y: this.lastFiltered.y + dy * factor,
+          z: target.z
+        };
+      }
+    }
+
+    const out: Point3D = {
+      x: this.xf.filter(target.x, timestamp),
+      y: this.yf.filter(target.y, timestamp),
+      z: this.zf.filter(target.z ?? 0, timestamp)
     };
+    this.lastFiltered = out;
+    return out;
   }
 
   public reset() {
+    this.lastFiltered = null;
     this.xf.reset();
     this.yf.reset();
     this.zf.reset();
@@ -123,24 +144,52 @@ export class OneEuroFilter3D {
 }
 
 /**
- * Manages 21 3D One Euro Filters for an entire hand skeleton.
+ * Anatomically differentiated 21-joint filter bank for hand skeletons.
+ * Each joint is assigned filter parameters matching its biomechanical rigidity.
  */
 export class HandSkeletonFilter {
   private landmarkFilters: OneEuroFilter3D[];
 
-  constructor(minCutoff: number = 0.85, beta: number = 0.009, dCutoff: number = 1.0) {
-    this.landmarkFilters = Array.from({ length: 21 }, () => new OneEuroFilter3D(minCutoff, beta, dCutoff));
+  constructor() {
+    this.landmarkFilters = Array.from({ length: 21 }, (_, jointIdx) => {
+      const cfg = getAnatomicalFilterConfig(jointIdx);
+      return new OneEuroFilter3D(cfg.minCutoff, cfg.beta, cfg.dCutoff);
+    });
   }
 
-  public filter(landmarks: Point3D[], timestamp: number): Point3D[] {
-    if (!landmarks || landmarks.length !== 21) return landmarks;
+  public filter(
+    landmarks: Point3D[],
+    timestamp: number,
+    palmScale: number = 0.15
+  ): ProvenancedLandmark[] {
+    if (!landmarks || landmarks.length !== 21) {
+      return (landmarks || []).map((pt) => ({ ...pt, provenance: 'OBSERVED' }));
+    }
+
+    // Dynamic jump threshold scaled to the hand's pixel dimensions
+    const maxJump = Math.max(0.12, palmScale * 2.8);
 
     return landmarks.map((pt, idx) => {
-      return this.landmarkFilters[idx].filter(pt, timestamp);
+      const filtered = this.landmarkFilters[idx].filter(pt, timestamp, maxJump);
+      return {
+        x: filtered.x,
+        y: filtered.y,
+        z: filtered.z,
+        rawX: pt.x,
+        rawY: pt.y,
+        rawZ: pt.z,
+        provenance: 'FILTERED'
+      };
     });
   }
 
   public reset() {
     this.landmarkFilters.forEach((f) => f.reset());
   }
+}
+
+export interface Point3D {
+  x: number;
+  y: number;
+  z: number;
 }
