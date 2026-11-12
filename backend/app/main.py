@@ -344,6 +344,76 @@ async def websocket_stream(websocket: WebSocket):
         except:
             pass
 
+@app.get("/api/alphabet/info")
+def get_alphabet_info():
+    """Returns metadata about the trained ISL manual alphabet neural classifier."""
+    alpha_file = SAVED_MODELS_DIR / "isl_alphabet_model.json"
+    if alpha_file.exists():
+        with open(alpha_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return {
+                "model_name": data.get("model_name"),
+                "version": data.get("version"),
+                "standard": data.get("standard"),
+                "accuracy": data.get("accuracy"),
+                "num_classes": len(data.get("classes", [])),
+                "classes": data.get("classes", []),
+                "num_features": data.get("num_features")
+            }
+    return {
+        "status": "ready",
+        "standard": "ISLRTC-Manual-Alphabet",
+        "supported_letters": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    }
+
+class AlphabetPredictPayload(BaseModel):
+    features: List[float]
+
+@app.post("/api/predict-alphabet")
+def predict_alphabet(payload: AlphabetPredictPayload):
+    """
+    Evaluates kinematic feature vector against the trained ISL Alphabet neural network.
+    """
+    alpha_file = SAVED_MODELS_DIR / "isl_alphabet_model.json"
+    if not alpha_file.exists():
+        raise HTTPException(status_code=503, detail="Alphabet model weights not loaded.")
+
+    with open(alpha_file, "r", encoding="utf-8") as f:
+        m = json.load(f)
+
+    weights = m["weights"]
+    classes = m["classes"]
+    x = payload.features
+
+    # Layer 1
+    w1, b1 = weights["w1"], weights["b1"]
+    z1 = [max(0.0, sum(w * xi for w, xi in zip(row, x)) + b) for row, b in zip(w1, b1)]
+
+    # Layer 2
+    w2, b2 = weights["w2"], weights["b2"]
+    z2 = [max(0.0, sum(w * zi for w, zi in zip(row, z1)) + b) for row, b in zip(w2, b2)]
+
+    # Layer 3
+    w3, b3 = weights["w3"], weights["b3"]
+    logits = [sum(w * zi for w, zi in zip(row, z2)) + b for row, b in zip(w3, b3)]
+
+    # Softmax with math.exp
+    import math
+    max_logit = max(logits)
+    exps = [math.exp(l - max_logit) for l in logits]
+    sum_exps = sum(exps)
+    probs = [float(e / sum_exps) for e in exps]
+
+    best_idx = max(range(len(probs)), key=lambda i: probs[i])
+    best_class = classes[best_idx]
+    best_conf = probs[best_idx]
+
+    return {
+        "character": best_class,
+        "confidence": round(best_conf, 4),
+        "all_probabilities": {c: round(p, 4) for c, p in zip(classes, probs)}
+    }
+
 # Mount React Production Frontend if built
 FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if FRONTEND_DIST.exists():

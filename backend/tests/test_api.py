@@ -130,3 +130,24 @@ def test_video_upload_invalid_extension():
     resp = client.post("/api/predict/video", files=files)
     assert resp.status_code == 400
     assert "Unsupported video format" in resp.json()["detail"]
+
+def test_alphabet_info_endpoint():
+    resp = client.get("/api/alphabet/info")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "classes" in data or "supported_letters" in data
+    classes = data.get("classes") or data.get("supported_letters")
+    assert "A" in classes
+    assert "H" in classes
+    assert "L" in classes
+
+def test_predict_alphabet_endpoint():
+    # 44 kinematic features (zeros for neutral/resting)
+    features = [0.0] * 44
+    resp = client.post("/api/predict-alphabet", json={"features": features})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "character" in data
+    assert "confidence" in data
+    assert "all_probabilities" in data
+
