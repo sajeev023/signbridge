@@ -1,0 +1,40 @@
+{
+  "folds": {
+    "Signer_1": {
+      "test_samples": 1000,
+      "accuracy": 99.9,
+      "macro_f1": 99.9,
+      "far_pct": 0.0,
+      "frr_pct": 0.0,
+      "ece": 0.004
+    },
+    "Signer_2": {
+      "test_samples": 1000,
+      "accuracy": 99.7,
+      "macro_f1": 99.7,
+      "far_pct": 2.5,
+      "frr_pct": 0.0,
+      "ece": 0.0059
+    },
+    "Signer_3": {
+      "test_samples": 1000,
+      "accuracy": 99.5,
+      "macro_f1": 99.5,
+      "far_pct": 10.0,
+      "frr_pct": 0.0,
+      "ece": 0.0069
+    },
+    "Signer_4": {
+      "test_samples": 1000,
+      "accuracy": 99.3,
+      "macro_f1": 99.3,
+      "far_pct": 5.0,
+      "frr_pct": 0.0,
+      "ece": 0.0023
+    }
+  },
+  "mean_accuracy": 99.6,
+  "std_accuracy": 0.22,
+  "mean_macro_f1": 99.6,
+  "std_macro_f1": 0.22
+}
