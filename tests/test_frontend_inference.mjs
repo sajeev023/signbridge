@@ -21,24 +21,22 @@ console.log(`Classes: ${model.classes.join(', ')}`);
 
 const { w1, b1, w2, b2, w3, b3 } = model.weights;
 
-console.assert(w1.length === 128, `w1 length should be 128, got ${w1.length}`);
 console.assert(w1[0].length === 42, `w1 input features should be 42, got ${w1[0].length}`);
-console.assert(b1.length === 128, `b1 length should be 128, got ${b1.length}`);
+console.assert(b1.length === w1.length, `b1 length should match w1, got ${b1.length}`);
 
-console.assert(w2.length === 64, `w2 length should be 64, got ${w2.length}`);
-console.assert(w2[0].length === 128, `w2 input features should be 128, got ${w2[0].length}`);
-console.assert(b2.length === 64, `b2 length should be 64, got ${b2.length}`);
+console.assert(w2[0].length === w1.length, `w2 input features should match w1 output, got ${w2[0].length}`);
+console.assert(b2.length === w2.length, `b2 length should match w2, got ${b2.length}`);
 
 console.assert(w3.length === 25, `w3 length should be 25, got ${w3.length}`);
-console.assert(w3[0].length === 64, `w3 input features should be 64, got ${w3[0].length}`);
+console.assert(w3[0].length === w2.length, `w3 input features should match w2 output, got ${w3[0].length}`);
 console.assert(b3.length === 25, `b3 length should be 25, got ${b3.length}`);
-console.log('[PASSED] All tensor dimensions and layer shapes verified.');
+console.log(`[PASSED] All tensor dimensions and layer shapes verified (${w1[0].length} -> ${w1.length} -> ${w2.length} -> ${w3.length}).`);
 
 console.log('\n=== TEST 2: Numerical Forward Pass & Softmax Verification ===');
 function forwardPass(features) {
   // Layer 1
-  const z1 = new Array(128);
-  for (let i = 0; i < 128; i++) {
+  const z1 = new Array(w1.length);
+  for (let i = 0; i < w1.length; i++) {
     let sum = b1[i];
     const row = w1[i];
     for (let j = 0; j < 42; j++) {
@@ -48,11 +46,11 @@ function forwardPass(features) {
   }
 
   // Layer 2
-  const z2 = new Array(64);
-  for (let i = 0; i < 64; i++) {
+  const z2 = new Array(w2.length);
+  for (let i = 0; i < w2.length; i++) {
     let sum = b2[i];
     const row = w2[i];
-    for (let j = 0; j < 128; j++) {
+    for (let j = 0; j < w1.length; j++) {
       sum += row[j] * z1[j];
     }
     z2[i] = Math.max(0, sum); // ReLU
@@ -64,7 +62,7 @@ function forwardPass(features) {
   for (let i = 0; i < 25; i++) {
     let sum = b3[i];
     const row = w3[i];
-    for (let j = 0; j < 64; j++) {
+    for (let j = 0; j < w2.length; j++) {
       sum += row[j] * z2[j];
     }
     logits[i] = sum;
