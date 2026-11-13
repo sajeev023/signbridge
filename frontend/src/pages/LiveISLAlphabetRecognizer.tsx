@@ -26,7 +26,8 @@ import {
   X,
   Hand,
   Settings2,
-  HelpCircle
+  HelpCircle,
+  Download
 } from 'lucide-react';
 import { webMediaPipe } from '../services/webMediaPipeService';
 import {
@@ -81,6 +82,21 @@ interface BenchmarkMetrics {
   avgJitter: number;
 }
 
+export interface AcceptanceTestRecord {
+  id: string;
+  timestamp: string;
+  signerId: string;
+  targetLetter: string;
+  predictedLetter: string;
+  confidence: number;
+  trackingQualityScore: number;
+  fps: number;
+  latencyMs: number;
+  accepted: boolean;
+  lighting: string;
+  distance: string;
+}
+
 export function LiveISLAlphabetRecognizer() {
   // Telemetry & Camera State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
@@ -104,6 +120,13 @@ export function LiveISLAlphabetRecognizer() {
   const [calibrationResults, setCalibrationResults] = useState<BenchmarkMetrics | null>(null);
   const calibrationFramesRef = useRef<Array<{ predicted: string; latency: number; jitter: number; isTracked: boolean }>>([]);
   const calibrationStartTimeRef = useRef<number>(0);
+
+  // Real-Device Acceptance Testing Mode State
+  const [acceptanceTesterId, setAcceptanceTesterId] = useState<string>('Signer_Alpha');
+  const [acceptanceLighting, setAcceptanceLighting] = useState<string>('Natural Daylight (450 lux)');
+  const [acceptanceDistance, setAcceptanceDistance] = useState<string>('Arm Length (~0.65m)');
+  const [acceptanceTargetLetter, setAcceptanceTargetLetter] = useState<string>('A');
+  const [acceptanceLog, setAcceptanceLog] = useState<AcceptanceTestRecord[]>([]);
 
   // Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
@@ -560,6 +583,64 @@ export function LiveISLAlphabetRecognizer() {
     }, 50);
   };
 
+  const logAcceptanceTrial = () => {
+    if (!currentResult) return;
+    const isMatch = currentResult.sign === acceptanceTargetLetter;
+    const isConfHigh = currentResult.confidence >= CONFIDENCE_MINIMUM;
+    const isAccepted = isMatch && isConfHigh && trackingReport.isReliableForInference;
+
+    const newRecord: AcceptanceTestRecord = {
+      id: `TRIAL_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      signerId: acceptanceTesterId,
+      targetLetter: acceptanceTargetLetter,
+      predictedLetter: currentResult.sign,
+      confidence: Number((currentResult.confidence * 100).toFixed(1)),
+      trackingQualityScore: trackingReport.qualityScore,
+      fps,
+      latencyMs,
+      accepted: isAccepted,
+      lighting: acceptanceLighting,
+      distance: acceptanceDistance
+    };
+
+    setAcceptanceLog((prev) => [newRecord, ...prev]);
+
+    // Advance to next letter in sequence (A -> B -> C -> D ...)
+    const supported = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
+    const curIdx = supported.indexOf(acceptanceTargetLetter);
+    if (curIdx >= 0 && curIdx < supported.length - 1) {
+      setAcceptanceTargetLetter(supported[curIdx + 1]);
+    }
+  };
+
+  const downloadAcceptanceReport = () => {
+    if (acceptanceLog.length === 0) return;
+    const reportPayload = {
+      report_title: 'SIGNBRIDGE Real-Device Acceptance Testing Session',
+      generated_at: new Date().toISOString(),
+      signer_id: acceptanceTesterId,
+      environment_conditions: {
+        lighting: acceptanceLighting,
+        distance: acceptanceDistance
+      },
+      total_trials: acceptanceLog.length,
+      accepted_trials: acceptanceLog.filter((t) => t.accepted).length,
+      accuracy_rate_pct: Number(
+        ((acceptanceLog.filter((t) => t.accepted).length / acceptanceLog.length) * 100).toFixed(1)
+      ),
+      trials: acceptanceLog
+    };
+
+    const blob = new Blob([JSON.stringify(reportPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `acceptance_test_${acceptanceTesterId}_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const activeSign =
     currentResult?.sign !== 'NEUTRAL' && (currentResult?.confidence ?? 0) >= CONFIDENCE_MINIMUM
       ? currentResult?.sign
@@ -975,6 +1056,180 @@ export function LiveISLAlphabetRecognizer() {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Dedicated Real-Device Acceptance Testing Mode (Section 10) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 space-y-4 shadow-inner">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <h4 className="text-sm font-bold text-white tracking-wide">
+                      Real-Device Acceptance Testing Mode
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Step-by-step physical mobile evaluation protocol with zero-video local telemetry logging.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {acceptanceLog.length > 0 && (
+                    <button
+                      onClick={downloadAcceptanceReport}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export Session JSON ({acceptanceLog.length})</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Protocol Config: Signer ID & Camera Environment */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                    Tester / Signer ID
+                  </label>
+                  <input
+                    type="text"
+                    value={acceptanceTesterId}
+                    onChange={(e) => setAcceptanceTesterId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                    placeholder="e.g. Signer_Phone_1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                    Illumination Condition
+                  </label>
+                  <select
+                    value={acceptanceLighting}
+                    onChange={(e) => setAcceptanceLighting(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="Natural Daylight (450 lux)">Natural Daylight (450 lux)</option>
+                    <option value="Indoor Fluorescent (320 lux)">Indoor Fluorescent (320 lux)</option>
+                    <option value="Low-Light Ambient (45 lux, High ISO)">Low-Light Ambient (45 lux, High ISO)</option>
+                    <option value="Dim Backlit Condition">Dim Backlit Condition</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                    Camera Optical Distance
+                  </label>
+                  <select
+                    value={acceptanceDistance}
+                    onChange={(e) => setAcceptanceDistance(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="Arm Length (~0.65m)">Arm Length (~0.65m)</option>
+                    <option value="Close-Up (~0.45m)">Close-Up (~0.45m)</option>
+                    <option value="Desk Mounted (~0.90m)">Desk Mounted (~0.90m)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Target Sign Card & Step Execution */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border-2 border-cyan-500/40 flex flex-col items-center justify-center">
+                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">Target</span>
+                    <span className="text-2xl font-black text-white">{acceptanceTargetLetter}</span>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">Live Model Prediction:</span>
+                      <span className="text-xs font-bold text-white px-2 py-0.5 rounded bg-slate-800">
+                        {currentResult?.sign || 'SEARCHING'}
+                      </span>
+                      <span className="text-xs text-cyan-300 font-semibold">
+                        ({Math.round((currentResult?.confidence || 0) * 100)}%)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Hold the sign steady for 2-3 seconds, then tap "Log Target Trial".
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <select
+                    value={acceptanceTargetLetter}
+                    onChange={(e) => setAcceptanceTargetLetter(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 text-cyan-300 px-3 py-2 rounded-xl text-xs font-semibold"
+                  >
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'].map((l) => (
+                      <option key={l} value={l}>
+                        Sign: {l}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={logAcceptanceTrial}
+                    disabled={!isCameraActive || !currentResult}
+                    className="flex-1 sm:flex-none px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-40 text-black font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
+                  >
+                    <CheckCircle2 className="w-4 h-4 fill-black text-cyan-400" />
+                    <span>Log Target Trial</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Logged Trials Table */}
+              {acceptanceLog.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                    <span>Logged Trials ({acceptanceLog.length})</span>
+                    <span className="text-emerald-400 font-bold">
+                      Accepted: {acceptanceLog.filter((t) => t.accepted).length} / {acceptanceLog.length} (
+                      {Math.round((acceptanceLog.filter((t) => t.accepted).length / acceptanceLog.length) * 100)}%)
+                    </span>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 text-xs">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-900/80 text-[10px] text-slate-400 uppercase tracking-wider sticky top-0">
+                        <tr>
+                          <th className="p-2">Target</th>
+                          <th className="p-2">Prediction</th>
+                          <th className="p-2">Confidence</th>
+                          <th className="p-2">Quality</th>
+                          <th className="p-2">Latency</th>
+                          <th className="p-2 text-right">Verdict</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
+                        {acceptanceLog.map((trial) => (
+                          <tr key={trial.id} className="hover:bg-slate-900/40">
+                            <td className="p-2 font-bold text-cyan-300">{trial.targetLetter}</td>
+                            <td className="p-2 text-white">{trial.predictedLetter}</td>
+                            <td className="p-2">{trial.confidence}%</td>
+                            <td className="p-2">{trial.trackingQualityScore}/100</td>
+                            <td className="p-2">{trial.latencyMs}ms</td>
+                            <td className="p-2 text-right">
+                              {trial.accepted ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-400 font-sans font-bold text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                                  ACCEPTED
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-rose-400 font-sans font-bold text-[10px] px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30">
+                                  MISMATCH
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Calibration & 10s Evaluation Protocol */}

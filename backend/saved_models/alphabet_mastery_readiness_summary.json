@@ -1,0 +1,322 @@
+{
+  "mission": "OPERATION ALPHABET MASTERY",
+  "timestamp": "2026-11-13T13:02:00Z",
+  "winning_architecture": "Compact_Regularized_MLP",
+  "topology": "42 -> 64 -> 32 -> 25",
+  "regularization": "L2 Alpha = 1e-3, Early Stopping, Adam",
+  "temperature_scaling_T": 1.0,
+  "validation_ece": 0.0401,
+  "overall_metrics": {
+    "synthetic_test_accuracy": 98.7,
+    "synthetic_test_macro_f1": 98.7,
+    "real_held_out_accuracy": 85.19,
+    "real_held_out_macro_f1": 84.88,
+    "core_abcd_macro_f1": 77.78
+  },
+  "multi_model_comparison": {
+    "Nearest_Centroid": {
+      "synth_acc": 90.7,
+      "real_held_out_acc": 85.19,
+      "real_macro_f1": 78.89,
+      "val_ece": 0.7469
+    },
+    "Linear_Softmax": {
+      "synth_acc": 73.3,
+      "real_held_out_acc": 66.67,
+      "real_macro_f1": 69.68,
+      "val_ece": 0.5245
+    },
+    "Random_Forest": {
+      "synth_acc": 99.6,
+      "real_held_out_acc": 88.89,
+      "real_macro_f1": 81.73,
+      "val_ece": 0.057
+    },
+    "Compact_Regularized_MLP": {
+      "synth_acc": 98.7,
+      "real_held_out_acc": 85.19,
+      "real_macro_f1": 84.88,
+      "val_ece": 0.0401
+    },
+    "Standard_Deep_MLP": {
+      "synth_acc": 99.4,
+      "real_held_out_acc": 55.56,
+      "real_macro_f1": 62.34,
+      "val_ece": 0.0185
+    },
+    "Wide_Deep_MLP": {
+      "synth_acc": 99.3,
+      "real_held_out_acc": 55.56,
+      "real_macro_f1": 62.34,
+      "val_ece": 0.0072
+    }
+  },
+  "latency_profile_us": {
+    "pure_forward_pass_median": 12.0,
+    "pure_forward_pass_p95": 19.9,
+    "feature_extraction_median": 157.0,
+    "feature_extraction_p95": 235.85,
+    "end_to_end_median": 172.2,
+    "end_to_end_p95": 187.31
+  },
+  "classes_evidence_status": {
+    "NEUTRAL": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "A": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 3,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 2,
+      "held_out_precision": 1.0,
+      "held_out_recall": 1.0,
+      "held_out_f1": 1.0
+    },
+    "B": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 2,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 1,
+      "held_out_precision": 1.0,
+      "held_out_recall": 1.0,
+      "held_out_f1": 1.0
+    },
+    "C": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 10,
+      "synthetic_samples": 160,
+      "unique_signers": 6,
+      "held_out_support": 10,
+      "held_out_precision": 1.0,
+      "held_out_recall": 0.8,
+      "held_out_f1": 0.8889
+    },
+    "D": {
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT",
+      "real_human_captures": 1,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 1,
+      "held_out_precision": 1.0,
+      "held_out_recall": 1.0,
+      "held_out_f1": 1.0
+    },
+    "E": {
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT",
+      "real_human_captures": 1,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "F": {
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT",
+      "real_human_captures": 1,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "G": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "H": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "I": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "K": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "L": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 9,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 2,
+      "held_out_precision": 1.0,
+      "held_out_recall": 1.0,
+      "held_out_f1": 1.0
+    },
+    "M": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "N": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "O": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 2,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 2,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "P": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "Q": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "R": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 2,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 1,
+      "held_out_precision": 1.0,
+      "held_out_recall": 1.0,
+      "held_out_f1": 1.0
+    },
+    "S": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "T": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "U": {
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT",
+      "real_human_captures": 1,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "V": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 4,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 2,
+      "held_out_precision": 1.0,
+      "held_out_recall": 1.0,
+      "held_out_f1": 1.0
+    },
+    "W": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "X": {
+      "evidence_status": "SYNTHETIC VALIDATION ONLY",
+      "real_human_captures": 0,
+      "synthetic_samples": 160,
+      "unique_signers": 4,
+      "held_out_support": 0,
+      "held_out_precision": 0.0,
+      "held_out_recall": 0.0,
+      "held_out_f1": 0.0
+    },
+    "Y": {
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE",
+      "real_human_captures": 6,
+      "synthetic_samples": 160,
+      "unique_signers": 6,
+      "held_out_support": 6,
+      "held_out_precision": 0.6,
+      "held_out_recall": 1.0,
+      "held_out_f1": 0.75
+    }
+  },
+  "phone_testing_readiness": {
+    "acceptance_testing_mode_enabled": true,
+    "acceptance_threshold": 0.72,
+    "stability_frames_required": 7,
+    "coasting_suppression_active": true,
+    "offline_tests_passing": "18 / 18",
+    "production_bundle_size_kb": 634.25
+  }
+}
