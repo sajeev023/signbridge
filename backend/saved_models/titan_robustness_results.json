@@ -1,0 +1,17 @@
+{
+  "TITAN_Spatial_GNN": {
+    "clean_accuracy": 1.0,
+    "scale_close_1.4x": 1.0,
+    "scale_far_0.7x": 1.0,
+    "rotation_minus_25deg": 0.82,
+    "rotation_plus_25deg": 1.0,
+    "sensor_noise_low": 0.9,
+    "sensor_noise_high": 0.56,
+    "occlusion_index": 0.26,
+    "occlusion_pinky": 0.8,
+    "finger_length_0.85x": 0.96,
+    "finger_length_1.15x": 0.94,
+    "mean_stress_accuracy": 0.824,
+    "robustness_retention_ratio": 0.824
+  }
+}

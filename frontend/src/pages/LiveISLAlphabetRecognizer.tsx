@@ -41,6 +41,8 @@ import { TrackingQualityReport } from '../services/trackingQualityEngine';
 import { speechService } from '../services/speechService';
 import { HAND_CONNECTIONS } from '../services/cameraLandmarkDetector';
 import { TrackingBenchmarkLab, ComparativeBenchmarkResult } from '../services/trackingBenchmarkLab';
+import { titanInferenceEngine, TitanInferenceResult } from '../services/titanInferenceEngine';
+import { titanASLInferenceEngine, TitanASLResult } from '../services/titanASLInferenceEngine';
 
 // Comprehensive reference guide for supported alphabet signs
 const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string; category: 'single' | 'dual' | 'dynamic' }> = {
@@ -127,6 +129,16 @@ export function LiveISLAlphabetRecognizer() {
   const [acceptanceDistance, setAcceptanceDistance] = useState<string>('Arm Length (~0.65m)');
   const [acceptanceTargetLetter, setAcceptanceTargetLetter] = useState<string>('A');
   const [acceptanceLog, setAcceptanceLog] = useState<AcceptanceTestRecord[]>([]);
+
+  // TITAN Research Engine State
+  const [showTitanMonitor, setShowTitanMonitor] = useState<boolean>(false);
+  const [titanResult, setTitanResult] = useState<TitanInferenceResult | null>(null);
+
+  // TITAN ASL Visual Reference Engine State
+  const [showASLReferenceDiagnostics, setShowASLReferenceDiagnostics] = useState<boolean>(false);
+  const [selectedASLReferenceLetter, setSelectedASLReferenceLetter] = useState<string>('A');
+  const [titanASLResult, setTitanASLResult] = useState<TitanASLResult | null>(null);
+  const [showFullASLChartModal, setShowFullASLChartModal] = useState<boolean>(false);
 
   // Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
@@ -422,6 +434,30 @@ export function LiveISLAlphabetRecognizer() {
     }
     setCurrentResult(result);
     setTrackingReport(result.qualityReport);
+
+    // Run independent TITAN backup engine if diagnostics monitor enabled
+    if (rawHands.length > 0 && showTitanMonitor) {
+      try {
+        const tTitan = titanInferenceEngine.predict(rawHands[0]);
+        setTitanResult(tTitan);
+      } catch (err) {
+        console.warn('TITAN engine inference error:', err);
+      }
+    } else if (rawHands.length === 0) {
+      setTitanResult(null);
+    }
+
+    // Run independent TITAN ASL reference engine if diagnostics monitor enabled
+    if (rawHands.length > 0 && showASLReferenceDiagnostics) {
+      try {
+        const tASL = titanASLInferenceEngine.predict(rawHands[0]);
+        setTitanASLResult(tASL);
+      } catch (err) {
+        console.warn('TITAN ASL engine inference error:', err);
+      }
+    } else if (rawHands.length === 0) {
+      setTitanASLResult(null);
+    }
 
     const t1 = performance.now();
     const procLatency = Number((t1 - t0).toFixed(1));
@@ -1369,6 +1405,204 @@ export function LiveISLAlphabetRecognizer() {
                   </table>
                 </div>
               )}
+
+              {/* TITAN Independent Research Engine Inspector */}
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-indigo-900/40">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-400" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-indigo-200">SIGNBRIDGE TITAN Spatial GNN Engine</h4>
+                      <p className="text-xs text-slate-400">Independent backup recognition architecture (2-Layer GCN + Aux42 + Uncertainty)</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowTitanMonitor(prev => !prev)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      showTitanMonitor
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {showTitanMonitor ? 'Monitor Active' : 'Enable TITAN Live'}
+                  </button>
+                </div>
+
+                {showTitanMonitor && (
+                  <div className="p-3 bg-slate-900/80 rounded-xl border border-indigo-800/30 text-xs">
+                    {titanResult ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">PREDICTED SIGN</span>
+                          <span className="text-lg font-bold text-indigo-400">{titanResult.sign}</span>
+                          <span className="text-[10px] text-slate-500 block">Raw: {titanResult.rawSign}</span>
+                        </div>
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">CALIBRATED CONF</span>
+                          <span className="text-base font-bold text-emerald-400">
+                            {(titanResult.confidence * 100).toFixed(1)}%
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Raw: {(titanResult.uncalibratedConfidence * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">PREDICTIVE ENTROPY</span>
+                          <span className={`text-base font-bold ${titanResult.entropy > 1.2 ? 'text-amber-400' : 'text-slate-200'}`}>
+                            {titanResult.entropy.toFixed(3)}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">Energy: {titanResult.energy.toFixed(1)}</span>
+                        </div>
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">REJECTION GATE</span>
+                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                            titanResult.isRejected ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+                          }`}>
+                            {titanResult.isRejected ? 'REJECTED' : 'ACCEPTED'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block mt-1">
+                            {titanResult.latencyMs.toFixed(2)} ms latency
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-center py-2">
+                        Present a hand to the camera to view live TITAN GCN activations and uncertainty estimates.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 2c. ASL Visual Reference Integration Diagnostics */}
+                <div className="mt-4 pt-4 border-t border-slate-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                      <span className="text-xs font-bold text-slate-200">ASL Visual Reference Diagnostics</span>
+                      <span className="text-[10px] bg-cyan-900/40 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-800/50">
+                        Gérard Aflague Collection
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowFullASLChartModal(true)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                        Full Poster
+                      </button>
+                      <button
+                        onClick={() => setShowASLReferenceDiagnostics(prev => !prev)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          showASLReferenceDiagnostics
+                            ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {showASLReferenceDiagnostics ? 'Diagnostics Active' : 'Enable ASL GNN'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {showASLReferenceDiagnostics && (
+                    <div className="p-3 bg-slate-900/80 rounded-xl border border-cyan-800/30 text-xs space-y-3">
+                      {/* Letter Selector Bar */}
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-semibold block mb-1.5">
+                          SELECT REFERENCE CANONICAL TARGET LETTER:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
+                            <button
+                              key={letter}
+                              onClick={() => setSelectedASLReferenceLetter(letter)}
+                              className={`w-6 h-6 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                selectedASLReferenceLetter === letter
+                                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/40'
+                                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                              }`}
+                            >
+                              {letter}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Visual Reference Comparison Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+                        {/* Reference Crop Preview */}
+                        <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800 flex items-center gap-3">
+                          <img
+                            src={`/references/crops/${selectedASLReferenceLetter}.png`}
+                            alt={`ASL ${selectedASLReferenceLetter}`}
+                            className="w-16 h-16 rounded-md object-contain bg-slate-900 border border-slate-700"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-semibold">CANONICAL POSTER</span>
+                            <span className="text-xl font-black text-cyan-400">{selectedASLReferenceLetter}</span>
+                            <span className="text-[9px] text-slate-500 block">Single-hand ASL</span>
+                          </div>
+                        </div>
+
+                        {/* Model Inference Result */}
+                        <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800 col-span-2">
+                          {titanASLResult ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div>
+                                <span className="text-[9px] text-slate-400 block">DETECTED SIGN</span>
+                                <span className={`text-base font-bold ${
+                                  titanASLResult.sign === selectedASLReferenceLetter ? 'text-emerald-400' : 'text-amber-400'
+                                }`}>
+                                  {titanASLResult.sign}
+                                </span>
+                                <span className="text-[9px] text-slate-500 block">
+                                  {titanASLResult.sign === selectedASLReferenceLetter ? 'MATCH' : 'MISMATCH'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-slate-400 block">CALIBRATED CONF</span>
+                                <span className="text-base font-bold text-emerald-400">
+                                  {(titanASLResult.confidence * 100).toFixed(1)}%
+                                </span>
+                                <span className="text-[9px] text-slate-500 block">
+                                  Raw: {(titanASLResult.uncalibratedConfidence * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-slate-400 block">ENTROPY / ENERGY</span>
+                                <span className="text-base font-bold text-slate-200">
+                                  {titanASLResult.entropy.toFixed(2)}
+                                </span>
+                                <span className="text-[9px] text-slate-500 block">
+                                  E: {titanASLResult.energy.toFixed(1)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-slate-400 block">STATUS</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                  titanASLResult.isRejected ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+                                }`}>
+                                  {titanASLResult.isRejected ? 'REJECTED' : 'ACCEPTED'}
+                                </span>
+                                <span className="text-[9px] text-slate-400 block mt-1">
+                                  {titanASLResult.latencyMs.toFixed(1)} ms
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-slate-400 text-center py-2 text-[11px]">
+                              Present a hand to test against ASL {selectedASLReferenceLetter} canonical pose.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1441,6 +1675,32 @@ export function LiveISLAlphabetRecognizer() {
                     <p className="text-xs text-slate-300 leading-relaxed">{info.desc}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ASL Visual Reference Chart Modal */}
+        {showFullASLChartModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white">American Sign Language Alphabet</h3>
+                  <p className="text-xs text-slate-400">Gérard Aflague Collection • Canonical Morphological Reference</p>
+                </div>
+                <button
+                  onClick={() => setShowFullASLChartModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950">
+                <img
+                  src="/references/asl_alphabet_chart.png"
+                  alt="American Sign Language Alphabet Chart"
+                  className="max-h-[75vh] w-auto rounded-xl object-contain shadow-lg border border-slate-800"
+                />
               </div>
             </div>
           </div>
