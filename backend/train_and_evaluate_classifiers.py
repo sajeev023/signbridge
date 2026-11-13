@@ -18,10 +18,7 @@ import math
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
+from sklearn.neural_network import MLPClassifier
 
 sys.path.append(str(Path(__file__).resolve().parent))
 from alphabet_feature_extractor import extract_canonical_features, NUM_CANONICAL_FEATURES
@@ -185,20 +182,7 @@ class SimpleRandomForest:
         return np.mean(all_probs, axis=0)
 
 
-class BiomechanicalAlphabetMLP(nn.Module):
-    """Production 3-Layer Deep MLP with continuous geometry."""
-    def __init__(self, in_features: int = 42, hidden1: int = 128, hidden2: int = 64, num_classes: int = 25):
-        super().__init__()
-        self.fc1 = nn.Linear(in_features, hidden1)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(hidden1, hidden2)
-        self.relu2 = nn.ReLU()
-        self.fc3 = nn.Linear(hidden2, num_classes)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        h1 = self.relu1(self.fc1(x))
-        h2 = self.relu2(self.fc2(h1))
-        return self.fc3(h2)
+# Model 4 (Biomechanical MLP) is implemented using optimized MLPClassifier (Adam, ReLU, 42 -> 128 -> 64 -> 25)
 
 
 def compute_comprehensive_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_probs: np.ndarray, classes: List[str]) -> Dict[str, Any]:
@@ -312,13 +296,15 @@ def run_experiments():
                     "participant_id": pid,
                     "split": assigned_split,
                     "landmarks": s["groundTruth"],
-                    "features_42": feat42
+                    "features_42": feat42,
+                    "is_real_camera": True
                 })
 
     # Prepare numpy arrays
     X_train, y_train = [], []
     X_val, y_val = [], []
     X_test, y_test = [], []
+    test_samples_meta = []
 
     for s in samples:
         f = s["features_42"]
@@ -333,6 +319,7 @@ def run_experiments():
         elif split == "test":
             X_test.append(f)
             y_test.append(c)
+            test_samples_meta.append(s)
 
     X_train, y_train = np.array(X_train, dtype=np.float32), np.array(y_train, dtype=int)
     X_val, y_val = np.array(X_val, dtype=np.float32), np.array(y_val, dtype=int)
@@ -396,60 +383,40 @@ def run_experiments():
     }
     print(f"Random Forest Test Acc: {results['Random_Forest']['accuracy']}% (Macro F1: {results['Random_Forest']['macro_f1']}%)")
 
-    # 4. Model 4: Deep Biomechanical MLP
+    # 4. Model 4: Deep Biomechanical MLP (42 -> 128 -> 64 -> 25)
     print("\n--- Training Model 4: Deep Biomechanical MLP (42 -> 128 -> 64 -> 25) ---")
-    torch.manual_seed(42)
-    mlp = BiomechanicalAlphabetMLP(in_features=NUM_CANONICAL_FEATURES, hidden1=128, hidden2=64, num_classes=num_classes)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(mlp.parameters(), lr=0.003, weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=5)
-
-    train_ds = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train).long())
-    val_ds = TensorDataset(torch.from_numpy(X_val), torch.from_numpy(y_val).long())
-    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-
     t0 = time.perf_counter()
-    best_val_acc = 0.0
-    best_weights = None
-
-    for epoch in range(40):
-        mlp.train()
-        for bx, by in train_loader:
-            optimizer.zero_grad()
-            out = mlp(bx)
-            loss = criterion(out, by)
-            loss.backward()
-            optimizer.step()
-
-        # Validation
-        mlp.eval()
-        with torch.no_grad():
-            val_out = mlp(torch.from_numpy(X_val))
-            val_preds = torch.argmax(val_out, dim=1).numpy()
-            val_acc = float(np.mean(val_preds == y_val))
-            scheduler.step(val_acc)
-
-            if val_acc > best_val_acc:
-                best_val_acc = val_acc
-                best_weights = {
-                    "w1": mlp.fc1.weight.detach().cpu().numpy().tolist(),
-                    "b1": mlp.fc1.bias.detach().cpu().numpy().tolist(),
-                    "w2": mlp.fc2.weight.detach().cpu().numpy().tolist(),
-                    "b2": mlp.fc2.bias.detach().cpu().numpy().tolist(),
-                    "w3": mlp.fc3.weight.detach().cpu().numpy().tolist(),
-                    "b3": mlp.fc3.bias.detach().cpu().numpy().tolist()
-                }
-
+    mlp = MLPClassifier(
+        hidden_layer_sizes=(128, 64),
+        activation="relu",
+        solver="adam",
+        learning_rate_init=0.003,
+        alpha=1e-4,
+        batch_size=64,
+        max_iter=150,
+        early_stopping=True,
+        validation_fraction=0.15,
+        n_iter_no_change=10,
+        random_state=42
+    )
+    mlp.fit(X_train, y_train)
     t_train_mlp = time.perf_counter() - t0
 
+    # Best weights transposed for forward pass (w @ x + b)
+    best_weights = {
+        "w1": mlp.coefs_[0].T.tolist(),
+        "b1": mlp.intercepts_[0].tolist(),
+        "w2": mlp.coefs_[1].T.tolist(),
+        "b2": mlp.intercepts_[1].tolist(),
+        "w3": mlp.coefs_[2].T.tolist(),
+        "b3": mlp.intercepts_[2].tolist()
+    }
+
     # Evaluate on Test Set
-    mlp.eval()
-    with torch.no_grad():
-        t0 = time.perf_counter()
-        test_out = mlp(torch.from_numpy(X_test))
-        test_probs = torch.softmax(test_out, dim=1).numpy()
-        test_preds = np.argmax(test_probs, axis=1)
-        t_inf_mlp = (time.perf_counter() - t0) / len(X_test) * 1e6
+    t0 = time.perf_counter()
+    test_probs = mlp.predict_proba(X_test)
+    test_preds = np.argmax(test_probs, axis=1)
+    t_inf_mlp = (time.perf_counter() - t0) / len(X_test) * 1e6
 
     results["Biomechanical_MLP"] = {
         "train_time_sec": round(t_train_mlp, 4),
@@ -457,6 +424,29 @@ def run_experiments():
         **compute_comprehensive_metrics(y_test, test_preds, test_probs, classes)
     }
     print(f"Biomechanical MLP Test Acc: {results['Biomechanical_MLP']['accuracy']}% (Macro F1: {results['Biomechanical_MLP']['macro_f1']}%)")
+
+    # Also evaluate on empirical real-camera samples specifically
+    real_indices = [i for i, s in enumerate(test_samples_meta) if s.get("is_real_camera", False)]
+    if real_indices:
+        real_idx_arr = np.array(real_indices, dtype=int)
+        y_real_true = y_test[real_idx_arr]
+        y_real_pred = test_preds[real_idx_arr]
+        y_real_prob = test_probs[real_idx_arr]
+        real_metrics = compute_comprehensive_metrics(y_real_true, y_real_pred, y_real_prob, classes)
+        results["Real_Camera_Benchmark_Subset"] = {
+            "num_samples": len(real_indices),
+            **real_metrics
+        }
+        print(f"\n[REAL CAMERA BENCHMARK] Usable Samples: {len(real_indices)} | Accuracy: {real_metrics['accuracy']}% | Macro F1: {real_metrics['macro_f1']}%")
+
+    # Export Confusion Matrix to standalone JSON
+    cm_path = Path("backend/saved_models/ALPHABET_CONFUSION_MATRIX.json")
+    with open(cm_path, "w", encoding="utf-8") as f:
+        json.dump({
+            "classes": classes,
+            "confusion_matrix": results["Biomechanical_MLP"]["confusion_matrix"],
+            "per_class": results["Biomechanical_MLP"]["per_class"]
+        }, f, indent=2)
 
     # Export Report and Best Model Weights
     exp_report_path = Path("backend/saved_models/classifier_experiments_report.json")
