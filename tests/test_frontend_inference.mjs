@@ -121,3 +121,4 @@ console.log(`Inference Latency: ${latencyUs.toFixed(2)} microseconds per predict
 console.assert(latencyUs < 100, `Latency must be under 100us, was ${latencyUs}us`);
 
 console.log('\n=== ALL INTEGRATION TESTS PASSED CLEANLY ===');
+

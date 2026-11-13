@@ -100,3 +100,4 @@ def test_scale_invariance():
 
     diff = np.max(np.abs(feats_small - feats_large))
     assert diff < 1e-3, f"Scale invariance violated, max diff: {diff}"
+
