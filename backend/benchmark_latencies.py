@@ -110,3 +110,4 @@ with open(output_file, "w", encoding="utf-8") as f:
         "complete_landmark_to_prediction": stats_e2e,
         "mobile_camera_fps_estimate": "30 - 60 FPS (Hardware camera sensor bounded)"
     }, f, indent=2)
+
