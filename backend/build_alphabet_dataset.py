@@ -396,6 +396,8 @@ def build_full_dataset(
                     roll += np.radians(-75.0)  # Horizontal hand orientation
                 elif sign in ["P", "Q"]:
                     pitch += np.radians(75.0)  # Downward pointing fingers
+                elif sign == "C":
+                    yaw += np.radians(np.random.choice([35.0, 45.0, 55.0, 10.0]))  # Natural lateral C arc orientation
                 rot_mat = create_rotation_matrix(pitch, yaw, roll)
 
                 # Generate anatomical hand
