@@ -1,0 +1,544 @@
+{
+  "poster_metadata": {
+    "title": "AMERICAN SIGN LANGUAGE ALPHABET",
+    "collection": "G\u00c9RARD AFLAGUE COLLECTION",
+    "resolution": [
+      772,
+      1024
+    ],
+    "total_panels": 26,
+    "grid_layout": "5 rows: 4 rows of 5 columns, 1 row of 6 columns",
+    "overlay_type": "Illustrative graphic skeleton (annotative, non-MediaPipe compliant)",
+    "key_anomalies_in_overlay": [
+      "Forearm / ulna-radius extension lines present in panels G, H, J, P, Q, X, Z extending beyond anatomical wrist",
+      "Central carpal star-topology fanning to all 5 MCPs instead of MediaPipe palm arch [5,9,13,17] + [0,5] + [0,17]",
+      "Planar projection of clenched fist joints ignores optical self-occlusion in real 3D sensors"
+    ]
+  },
+  "classes": {
+    "A": {
+      "type": "static",
+      "row": 0,
+      "col": 0,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Extended upright along radial edge of index MCP/PIP",
+      "contact": "Thumb rests on lateral side of index",
+      "movement": "None",
+      "confusable_with": [
+        "S",
+        "E",
+        "M",
+        "N",
+        "T"
+      ]
+    },
+    "B": {
+      "type": "static",
+      "row": 0,
+      "col": 1,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "extended",
+        "ring": "extended",
+        "pinky": "extended"
+      },
+      "thumb": "Folded flat across palm surface",
+      "contact": "Thumb pad contacts palm near MCPs",
+      "movement": "None",
+      "confusable_with": [
+        "4",
+        "Open-Hand"
+      ]
+    },
+    "C": {
+      "type": "static",
+      "row": 0,
+      "col": 2,
+      "orientation": "Lateral profile, facing left",
+      "curl": {
+        "index": "curved",
+        "middle": "curved",
+        "ring": "curved",
+        "pinky": "curved"
+      },
+      "thumb": "Abducted, curved upward opposing fingers",
+      "contact": "Open C aperture",
+      "movement": "None",
+      "confusable_with": [
+        "O",
+        "E"
+      ]
+    },
+    "D": {
+      "type": "static",
+      "row": 0,
+      "col": 3,
+      "orientation": "Upright, palm anterior-medial",
+      "curl": {
+        "index": "extended",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Touches middle and ring fingertips to form circle",
+      "contact": "Thumb pad touches middle fingertip",
+      "movement": "None",
+      "confusable_with": [
+        "1",
+        "Z (static)",
+        "F"
+      ]
+    },
+    "E": {
+      "type": "static",
+      "row": 0,
+      "col": 4,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "flexed_claw",
+        "middle": "flexed_claw",
+        "ring": "flexed_claw",
+        "pinky": "flexed_claw"
+      },
+      "thumb": "Tucked horizontally under fingertips",
+      "contact": "Fingertips press onto thumb dorsal surface",
+      "movement": "None",
+      "confusable_with": [
+        "S",
+        "A",
+        "C",
+        "O"
+      ]
+    },
+    "F": {
+      "type": "static",
+      "row": 1,
+      "col": 0,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled_to_thumb",
+        "middle": "extended",
+        "ring": "extended",
+        "pinky": "extended"
+      },
+      "thumb": "Opposed touching index fingertip",
+      "contact": "Index tip touches thumb tip in circle",
+      "movement": "None",
+      "confusable_with": [
+        "D",
+        "9",
+        "B"
+      ]
+    },
+    "G": {
+      "type": "static",
+      "row": 1,
+      "col": 1,
+      "orientation": "Horizontal, pointing left",
+      "curl": {
+        "index": "extended_horizontal",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Extended parallel to index finger",
+      "contact": "Small gap (~1.5cm) between index and thumb",
+      "movement": "None",
+      "confusable_with": [
+        "H",
+        "Q",
+        "L"
+      ]
+    },
+    "H": {
+      "type": "static",
+      "row": 1,
+      "col": 2,
+      "orientation": "Horizontal, pointing left",
+      "curl": {
+        "index": "extended_horizontal",
+        "middle": "extended_horizontal",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded flat under middle finger base",
+      "contact": "Index and middle touching side-by-side",
+      "movement": "None",
+      "confusable_with": [
+        "G",
+        "U",
+        "V"
+      ]
+    },
+    "I": {
+      "type": "static",
+      "row": 1,
+      "col": 3,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "extended"
+      },
+      "thumb": "Folded across clenched index/middle fingers",
+      "contact": "Thumb crosses anterior fist",
+      "movement": "None",
+      "confusable_with": [
+        "J (static start)",
+        "D",
+        "Y"
+      ]
+    },
+    "J": {
+      "type": "dynamic",
+      "row": 1,
+      "col": 4,
+      "orientation": "Dynamic trajectory from I-pose with wrist rotation",
+      "curl": {
+        "index": "curled",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "extended"
+      },
+      "thumb": "Folded across fist",
+      "contact": "Pinky tip traces path",
+      "movement": "Downward curving J-hook with ulnar supination (dashed arrow illustrated)",
+      "confusable_with": [
+        "I (static start)",
+        "Z"
+      ]
+    },
+    "K": {
+      "type": "static",
+      "row": 2,
+      "col": 0,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "extended_forward_45deg",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Extended upward touching middle finger PIP",
+      "contact": "Thumb tip contacts middle finger joint",
+      "movement": "None",
+      "confusable_with": [
+        "V",
+        "P (inverted)",
+        "D"
+      ]
+    },
+    "L": {
+      "type": "static",
+      "row": 2,
+      "col": 1,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Extended horizontally at 90 deg angle",
+      "contact": "Forms rigid L perpendicular",
+      "movement": "None",
+      "confusable_with": [
+        "G",
+        "D"
+      ]
+    },
+    "M": {
+      "type": "static",
+      "row": 2,
+      "col": 2,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled_over_thumb",
+        "middle": "curled_over_thumb",
+        "ring": "curled_over_thumb",
+        "pinky": "curled"
+      },
+      "thumb": "Tucked under 3 fingers, peeking between ring & pinky",
+      "contact": "Three fingers cover thumb dorsal surface",
+      "movement": "None",
+      "confusable_with": [
+        "N",
+        "T",
+        "S",
+        "A",
+        "E"
+      ]
+    },
+    "N": {
+      "type": "static",
+      "row": 2,
+      "col": 3,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled_over_thumb",
+        "middle": "curled_over_thumb",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Tucked under 2 fingers, peeking between middle & ring",
+      "contact": "Two fingers cover thumb dorsal surface",
+      "movement": "None",
+      "confusable_with": [
+        "M",
+        "T",
+        "S",
+        "A",
+        "E"
+      ]
+    },
+    "O": {
+      "type": "static",
+      "row": 2,
+      "col": 4,
+      "orientation": "Upright, palm anterior-medial",
+      "curl": {
+        "index": "curved",
+        "middle": "curved",
+        "ring": "curved",
+        "pinky": "curved"
+      },
+      "thumb": "Opposed touching all 4 fingertips in oval",
+      "contact": "All fingertips meet thumb tip",
+      "movement": "None",
+      "confusable_with": [
+        "C",
+        "E",
+        "S"
+      ]
+    },
+    "P": {
+      "type": "static",
+      "row": 3,
+      "col": 0,
+      "orientation": "Downward inverted K-shape, wrist flexed",
+      "curl": {
+        "index": "extended_forward_down",
+        "middle": "extended_down_90deg",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Touching middle PIP joint",
+      "contact": "Thumb pad contacts middle knuckle",
+      "movement": "None",
+      "confusable_with": [
+        "K",
+        "Q"
+      ]
+    },
+    "Q": {
+      "type": "static",
+      "row": 3,
+      "col": 1,
+      "orientation": "Downward inverted G-shape, wrist flexed",
+      "curl": {
+        "index": "extended_down",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Extended downward parallel to index",
+      "contact": "Small gap between index and thumb",
+      "movement": "None",
+      "confusable_with": [
+        "G",
+        "P"
+      ]
+    },
+    "R": {
+      "type": "static",
+      "row": 3,
+      "col": 2,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "extended_crossed_over_index",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across ring finger",
+      "contact": "Middle finger crosses over dorsal surface of index",
+      "movement": "None",
+      "confusable_with": [
+        "U",
+        "V"
+      ]
+    },
+    "S": {
+      "type": "static",
+      "row": 3,
+      "col": 3,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across front of fingers covering index & middle",
+      "contact": "Thumb crosses anterior surface of fist",
+      "movement": "None",
+      "confusable_with": [
+        "A",
+        "E",
+        "M",
+        "N",
+        "T"
+      ]
+    },
+    "T": {
+      "type": "static",
+      "row": 3,
+      "col": 4,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled_over_thumb",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Tucked under 1 finger, peeking between index & middle",
+      "contact": "Index finger covers thumb dorsal surface",
+      "movement": "None",
+      "confusable_with": [
+        "M",
+        "N",
+        "S",
+        "A",
+        "E"
+      ]
+    },
+    "U": {
+      "type": "static",
+      "row": 4,
+      "col": 0,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "extended",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across ring finger",
+      "contact": "Index and middle touching side-by-side (adducted)",
+      "movement": "None",
+      "confusable_with": [
+        "V",
+        "R",
+        "H"
+      ]
+    },
+    "V": {
+      "type": "static",
+      "row": 4,
+      "col": 1,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "extended",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across ring finger",
+      "contact": "Index and middle spread apart in V-shape (abducted)",
+      "movement": "None",
+      "confusable_with": [
+        "U",
+        "K",
+        "W",
+        "R"
+      ]
+    },
+    "W": {
+      "type": "static",
+      "row": 4,
+      "col": 2,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "extended",
+        "middle": "extended",
+        "ring": "extended",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across pinky holding it down",
+      "contact": "Thumb locks pinky; 3 fingers spread in W-shape",
+      "movement": "None",
+      "confusable_with": [
+        "V",
+        "3",
+        "B"
+      ]
+    },
+    "X": {
+      "type": "static",
+      "row": 4,
+      "col": 3,
+      "orientation": "Upright, palm anterior-medial",
+      "curl": {
+        "index": "hooked_at_PIP",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across middle finger",
+      "contact": "Index hooked like a pirate hook",
+      "movement": "None",
+      "confusable_with": [
+        "D",
+        "S",
+        "E"
+      ]
+    },
+    "Y": {
+      "type": "static",
+      "row": 4,
+      "col": 4,
+      "orientation": "Upright, palm anterior",
+      "curl": {
+        "index": "curled",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "extended"
+      },
+      "thumb": "Extended outward laterally (shaka)",
+      "contact": "Thumb & pinky extended opposite; middle 3 curled",
+      "movement": "None",
+      "confusable_with": [
+        "I",
+        "J"
+      ]
+    },
+    "Z": {
+      "type": "dynamic",
+      "row": 4,
+      "col": 5,
+      "orientation": "Index extended as stylus, other fingers curled",
+      "curl": {
+        "index": "extended",
+        "middle": "curled",
+        "ring": "curled",
+        "pinky": "curled"
+      },
+      "thumb": "Folded across middle finger",
+      "contact": "Index tip draws trajectory",
+      "movement": "3-stroke zigzag in space (horizontal right, diagonal down-left, horizontal right, dashed arrow illustrated)",
+      "confusable_with": [
+        "D (static start)",
+        "1",
+        "J"
+      ]
+    }
+  }
+}
