@@ -1,25 +1,25 @@
 {
   "iterations": 2000,
   "pure_mlp_forward": {
-    "median_us": 12.8,
-    "p95_us": 13.2,
-    "mean_us": 12.93,
-    "min_us": 12.4,
-    "max_us": 31.6
+    "median_us": 12.0,
+    "p95_us": 19.9,
+    "mean_us": 14.56,
+    "min_us": 11.3,
+    "max_us": 90.3
   },
   "feature_extraction": {
-    "median_us": 155.4,
-    "p95_us": 254.61,
-    "mean_us": 168.49,
-    "min_us": 152.3,
-    "max_us": 1075.8
+    "median_us": 157.0,
+    "p95_us": 235.85,
+    "mean_us": 168.23,
+    "min_us": 152.9,
+    "max_us": 887.5
   },
   "complete_landmark_to_prediction": {
-    "median_us": 171.2,
-    "p95_us": 235.6,
-    "mean_us": 183.12,
-    "min_us": 166.1,
-    "max_us": 747.1
+    "median_us": 172.2,
+    "p95_us": 187.31,
+    "mean_us": 186.85,
+    "min_us": 163.9,
+    "max_us": 18291.2
   },
   "mobile_camera_fps_estimate": "30 - 60 FPS (Hardware camera sensor bounded)"
 }

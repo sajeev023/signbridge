@@ -1,0 +1,54 @@
+{
+  "Candidate_A_Baseline_Compact": {
+    "description": "Production Compact MLP (64, 32, alpha=1e-3)",
+    "synthetic_test": {
+      "accuracy": 99.5,
+      "macro_f1": 99.5,
+      "ece": 0.0175
+    },
+    "real_held_out_test": {
+      "accuracy": 85.19,
+      "macro_f1": 84.88,
+      "ece": 0.1991
+    }
+  },
+  "Candidate_B_Input_Dropout": {
+    "description": "Compact MLP + Input Dropout (p=0.15)",
+    "synthetic_test": {
+      "accuracy": 97.3,
+      "macro_f1": 97.25,
+      "ece": 0.0399
+    },
+    "real_held_out_test": {
+      "accuracy": 85.19,
+      "macro_f1": 86.07,
+      "ece": 0.1022
+    }
+  },
+  "Candidate_C_Stronger_Regularization": {
+    "description": "Compact MLP + Stronger L2 (alpha=3e-3)",
+    "synthetic_test": {
+      "accuracy": 99.5,
+      "macro_f1": 99.5,
+      "ece": 0.0179
+    },
+    "real_held_out_test": {
+      "accuracy": 85.19,
+      "macro_f1": 84.88,
+      "ece": 0.2306
+    }
+  },
+  "Candidate_D_Kinivi_Inspired_Topology": {
+    "description": "Kinivi-Inspired Compact Topology (48, 24, alpha=2e-3)",
+    "synthetic_test": {
+      "accuracy": 99.2,
+      "macro_f1": 99.2,
+      "ece": 0.0253
+    },
+    "real_held_out_test": {
+      "accuracy": 85.19,
+      "macro_f1": 86.07,
+      "ece": 0.228
+    }
+  }
+}

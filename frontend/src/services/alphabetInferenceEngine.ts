@@ -3,6 +3,7 @@ import singleHandModel from './single_hand_alphabet_model.json';
 import { Point3D } from './oneEuroFilter';
 import { persistentHandTracker, PersistentHandTrack } from './persistentHandTracker';
 import { trackingQualityEngine, TrackingQualityReport } from './trackingQualityEngine';
+import { dynamicTrajectoryEngine } from './dynamicTrajectoryEngine';
 
 export interface LandmarkPoint extends Point3D {}
 
@@ -461,22 +462,7 @@ class AlphabetInferenceEngine {
       };
     }
 
-    // 3. Dynamic Sign Check ('J', 'Z')
-    const dynamicMatch = this.checkDynamicSigns(tracks, timestamp);
-    if (dynamicMatch && dynamicMatch.confidence >= 0.85) {
-      return {
-        sign: dynamicMatch.sign,
-        confidence: dynamicMatch.confidence,
-        isDynamic: true,
-        handCount: tracks.length,
-        convention: 'ISLRTC (2-Hand)',
-        allProbabilities: { [dynamicMatch.sign]: dynamicMatch.confidence },
-        tracks,
-        qualityReport
-      };
-    }
-
-    // 4. Determine Active Convention
+    // 3. Determine Active Convention
     const useSingleHand =
       convention === 'single_hand_chart' || (convention === 'auto' && tracks.length === 1);
 
@@ -498,6 +484,34 @@ class AlphabetInferenceEngine {
         };
       }
 
+      // Dynamic Trajectory Engine Check ('J', 'Z') - Engine B
+      const palmScale = dominantTrack.palmScale > 0.035
+        ? dominantTrack.palmScale
+        : Math.max(
+            0.035,
+            this.dist3D(dominantTrack.smoothedLandmarks[9], dominantTrack.smoothedLandmarks[0])
+          );
+      const dynamicMatch = dynamicTrajectoryEngine.update(
+        dominantTrack.smoothedLandmarks,
+        palmScale,
+        timestamp,
+        dominantTrack.trackId
+      );
+
+      if (dynamicMatch && dynamicMatch.confidence >= 0.85) {
+        return {
+          sign: dynamicMatch.sign,
+          confidence: dynamicMatch.confidence,
+          isDynamic: true,
+          handCount: 1,
+          convention: 'Single-Hand (Chart)',
+          allProbabilities: dynamicMatch.allProbabilities,
+          tracks,
+          qualityReport
+        };
+      }
+
+      // Static Biomechanical 42-Feature Engine - Engine A
       const features = this.extractSingleHandFeatures(dominantTrack.smoothedLandmarks);
       const res = this.runMLP(this.singleHandWeights, this.singleHandClasses, features);
       return {
@@ -549,6 +563,7 @@ class AlphabetInferenceEngine {
   public reset() {
     persistentHandTracker.reset();
     trackingQualityEngine.reset();
+    dynamicTrajectoryEngine.reset();
     this.trajectoryBuffer = [];
   }
 }
