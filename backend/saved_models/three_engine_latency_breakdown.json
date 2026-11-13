@@ -1,0 +1,64 @@
+{
+  "iterations": 5000,
+  "metrics": {
+    "static_feature_copy": {
+      "median_us": 1.1,
+      "p95_us": 3.5,
+      "mean_us": 1.65,
+      "median_ms": 0.0011,
+      "p95_ms": 0.0035
+    },
+    "static_mlp_forward_engine_a": {
+      "median_us": 11.8,
+      "p95_us": 26.4,
+      "mean_us": 14.93,
+      "median_ms": 0.0118,
+      "p95_ms": 0.0264
+    },
+    "point_history_buffering": {
+      "median_us": 0.4,
+      "p95_us": 0.8,
+      "mean_us": 0.44,
+      "median_ms": 0.0004,
+      "p95_ms": 0.0008
+    },
+    "arc_length_resampling_32dim": {
+      "median_us": 1.4,
+      "p95_us": 3.7,
+      "mean_us": 1.92,
+      "median_ms": 0.0014,
+      "p95_ms": 0.0037
+    },
+    "dynamic_mlp_forward_engine_b": {
+      "median_us": 3.2,
+      "p95_us": 7.3,
+      "mean_us": 4.18,
+      "median_ms": 0.0032,
+      "p95_ms": 0.0073
+    },
+    "arbitration_layer_engine_c": {
+      "median_us": 0.2,
+      "p95_us": 0.3,
+      "mean_us": 0.18,
+      "median_ms": 0.0002,
+      "p95_ms": 0.0003
+    },
+    "total_neural_arbitration_pipeline": {
+      "median_us": 18.3,
+      "p95_us": 41.8,
+      "mean_us": 23.44,
+      "median_ms": 0.0183,
+      "p95_ms": 0.0418
+    },
+    "mediapipe_vision_webassembly_gpu": {
+      "median_ms": 18.4,
+      "p95_ms": 26.2,
+      "description": "MediaPipe HandLandmarker WebGL/WASM hardware sensor frame budget on mobile/webcam"
+    },
+    "total_camera_frame_to_prediction": {
+      "median_ms": 18.52,
+      "p95_ms": 26.41,
+      "description": "End-to-end user-perceived frame acquisition to final arbitrated sign prediction"
+    }
+  }
+}

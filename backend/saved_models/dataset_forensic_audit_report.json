@@ -1,0 +1,537 @@
+{
+  "audit_timestamp": "2026-11-13T12:56:00Z",
+  "total_unique_hashes": 4038,
+  "duplicate_hash_groups": 2,
+  "cross_split_leakage_groups": 0,
+  "per_class_audit": {
+    "NEUTRAL": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "A": {
+      "real_human_samples": 3,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 163,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 3,
+      "splits": {
+        "train": 81,
+        "val": 40,
+        "test": 42
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "B": {
+      "real_human_samples": 2,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 162,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 3,
+      "splits": {
+        "train": 81,
+        "val": 40,
+        "test": 41
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "C": {
+      "real_human_samples": 10,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 170,
+      "unique_signers_count": 6,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4",
+        "Signer_5",
+        "Signer_6"
+      ],
+      "sessions_count": 8,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 50
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "D": {
+      "real_human_samples": 1,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 161,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 2,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 41
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT"
+    },
+    "E": {
+      "real_human_samples": 1,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 161,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 2,
+      "splits": {
+        "train": 81,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT"
+    },
+    "F": {
+      "real_human_samples": 1,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 161,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 2,
+      "splits": {
+        "train": 81,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT"
+    },
+    "G": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "H": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "I": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "K": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "L": {
+      "real_human_samples": 9,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 169,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 5,
+      "splits": {
+        "train": 87,
+        "val": 40,
+        "test": 42
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "M": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "N": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "O": {
+      "real_human_samples": 2,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 162,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 3,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 42
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "P": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "Q": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "R": {
+      "real_human_samples": 2,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 162,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 2,
+      "splits": {
+        "train": 81,
+        "val": 40,
+        "test": 41
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "S": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "T": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "U": {
+      "real_human_samples": 1,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 161,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 2,
+      "splits": {
+        "train": 81,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION INSUFFICIENT"
+    },
+    "V": {
+      "real_human_samples": 4,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 164,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 3,
+      "splits": {
+        "train": 82,
+        "val": 40,
+        "test": 42
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    },
+    "W": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "X": {
+      "real_human_samples": 0,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 160,
+      "unique_signers_count": 4,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4"
+      ],
+      "sessions_count": 1,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 40
+      },
+      "evidence_status": "SYNTHETIC VALIDATION ONLY"
+    },
+    "Y": {
+      "real_human_samples": 6,
+      "synthetic_samples": 160,
+      "augmented_samples": 0,
+      "invalid_samples": 0,
+      "total_valid_samples": 166,
+      "unique_signers_count": 6,
+      "unique_signers_list": [
+        "Signer_1",
+        "Signer_2",
+        "Signer_3",
+        "Signer_4",
+        "Signer_5",
+        "Signer_6"
+      ],
+      "sessions_count": 5,
+      "splits": {
+        "train": 80,
+        "val": 40,
+        "test": 46
+      },
+      "evidence_status": "REAL-HUMAN VALIDATION AVAILABLE"
+    }
+  }
+}
