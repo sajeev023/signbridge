@@ -280,3 +280,4 @@ if __name__ == "__main__":
         run_collection_camera(args.signer_id, args.sign, args.camera)
     else:
         run_verify_schema()
+

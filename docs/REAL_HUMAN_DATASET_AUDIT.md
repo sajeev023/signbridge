@@ -85,3 +85,4 @@ Two principal landmark datasets exist within the repository:
    - Letters J and Z require temporal motion tracing (downward hook for J, zigzag for Z). Evaluating them as static snapshots is scientifically invalid. They are cleanly isolated to the dynamic trajectory engine.
 3. **Absence of Data Leakage**:
    - In both datasets, `Signer_4` captures are reserved exclusively for the untouched test set and are never exposed during model training or hyperparameter tuning.
+

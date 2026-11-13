@@ -104,3 +104,4 @@ The SIGNBRIDGE recognition pipeline represents hand geometry using MediaPipe's c
 - **Dynamic Signs (J and Z)**:
   - Formulated as spatio-temporal trajectories of the dominant fingertip (pinky for J, index for Z) tracked across an adaptive 1200ms rolling window.
   - Dynamically triggered and prioritized when tracking confidence is verified.
+

@@ -118,3 +118,4 @@ In accordance with strict empirical reporting standards:
 - **Empirical False Rejection Rate**: **0.0%** (zero valid signs misclassified as `NEUTRAL`).
 
 This empirical benchmark provides an honest, reproducible baseline for real camera performance without cosmetic inflation.
+

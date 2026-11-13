@@ -79,3 +79,4 @@ Automated regression and cross-language unit tests were executed on deterministi
 - **Maximum Absolute Discrepancy**: $5.428 \times 10^{-7}$
 - **Number of Discrepant Features ($> 10^{-5}$)**: **0 / 42**
 - **Conclusion**: Mathematical equivalence is verified to within IEEE 754 single-precision floating point limits.
+
