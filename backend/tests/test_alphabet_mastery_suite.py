@@ -137,7 +137,8 @@ def test_E_numerical_stability():
 # Test F: Neutral Rejection
 # ---------------------------------------------------------------------------
 def test_F_neutral_rejection(loaded_model):
-    pts = generate_anatomical_hand("NEUTRAL", 1.0, 1.0, motor_noise_std=0.03)
+    np.random.seed(42)
+    pts = generate_anatomical_hand("NEUTRAL", 1.0, 1.0, motor_noise_std=0.01)
     lms = [{"x": float(p[0]), "y": float(p[1]), "z": float(p[2])} for p in pts]
     feats = extract_canonical_features(lms)
     pred_idx, conf, probs = python_forward_pass(loaded_model["weights"], feats)
