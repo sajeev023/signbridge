@@ -1,0 +1,26 @@
+{
+  "Kinivi_Orig_Architecture": {
+    "preprocessing": "Raw 2D Rel Coords (MaxAbs norm)",
+    "topology": "42 -> 20 -> 10 -> 25",
+    "synth_test_acc": 88.7,
+    "real_held_out_acc": 44.44,
+    "rot_20deg_acc": 40.74,
+    "rot_40deg_acc": 11.11
+  },
+  "Kinivi_Preprocessing_Larger_MLP": {
+    "preprocessing": "Raw 2D Rel Coords (MaxAbs norm)",
+    "topology": "42 -> 64 -> 32 -> 25",
+    "synth_test_acc": 96.7,
+    "real_held_out_acc": 51.85,
+    "rot_20deg_acc": 40.74,
+    "rot_40deg_acc": 14.81
+  },
+  "SIGNBRIDGE_Biomechanical_Canonical": {
+    "preprocessing": "Canonical 42 Invariant Biomechanical Features",
+    "topology": "42 -> 64 -> 32 -> 25",
+    "synth_test_acc": 99.5,
+    "real_held_out_acc": 85.19,
+    "rot_20deg_acc": 85.19,
+    "rot_40deg_acc": 85.19
+  }
+}
