@@ -41,6 +41,7 @@ import { TrackingQualityReport } from '../services/trackingQualityEngine';
 import { speechService } from '../services/speechService';
 import { HAND_CONNECTIONS } from '../services/cameraLandmarkDetector';
 import { TrackingBenchmarkLab, ComparativeBenchmarkResult } from '../services/trackingBenchmarkLab';
+import { titanInferenceEngine, TitanInferenceResult } from '../services/titanInferenceEngine';
 
 // Comprehensive reference guide for supported alphabet signs
 const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string; category: 'single' | 'dual' | 'dynamic' }> = {
@@ -127,6 +128,10 @@ export function LiveISLAlphabetRecognizer() {
   const [acceptanceDistance, setAcceptanceDistance] = useState<string>('Arm Length (~0.65m)');
   const [acceptanceTargetLetter, setAcceptanceTargetLetter] = useState<string>('A');
   const [acceptanceLog, setAcceptanceLog] = useState<AcceptanceTestRecord[]>([]);
+
+  // TITAN Research Engine State
+  const [showTitanMonitor, setShowTitanMonitor] = useState<boolean>(false);
+  const [titanResult, setTitanResult] = useState<TitanInferenceResult | null>(null);
 
   // Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
@@ -422,6 +427,18 @@ export function LiveISLAlphabetRecognizer() {
     }
     setCurrentResult(result);
     setTrackingReport(result.qualityReport);
+
+    // Run independent TITAN backup engine if diagnostics monitor enabled
+    if (rawHands.length > 0 && showTitanMonitor) {
+      try {
+        const tTitan = titanInferenceEngine.predict(rawHands[0]);
+        setTitanResult(tTitan);
+      } catch (err) {
+        console.warn('TITAN engine inference error:', err);
+      }
+    } else if (rawHands.length === 0) {
+      setTitanResult(null);
+    }
 
     const t1 = performance.now();
     const procLatency = Number((t1 - t0).toFixed(1));
@@ -1369,6 +1386,74 @@ export function LiveISLAlphabetRecognizer() {
                   </table>
                 </div>
               )}
+
+              {/* TITAN Independent Research Engine Inspector */}
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-indigo-900/40">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-400" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-indigo-200">SIGNBRIDGE TITAN Spatial GNN Engine</h4>
+                      <p className="text-xs text-slate-400">Independent backup recognition architecture (2-Layer GCN + Aux42 + Uncertainty)</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowTitanMonitor(prev => !prev)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      showTitanMonitor
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {showTitanMonitor ? 'Monitor Active' : 'Enable TITAN Live'}
+                  </button>
+                </div>
+
+                {showTitanMonitor && (
+                  <div className="p-3 bg-slate-900/80 rounded-xl border border-indigo-800/30 text-xs">
+                    {titanResult ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">PREDICTED SIGN</span>
+                          <span className="text-lg font-bold text-indigo-400">{titanResult.sign}</span>
+                          <span className="text-[10px] text-slate-500 block">Raw: {titanResult.rawSign}</span>
+                        </div>
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">CALIBRATED CONF</span>
+                          <span className="text-base font-bold text-emerald-400">
+                            {(titanResult.confidence * 100).toFixed(1)}%
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Raw: {(titanResult.uncalibratedConfidence * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">PREDICTIVE ENTROPY</span>
+                          <span className={`text-base font-bold ${titanResult.entropy > 1.2 ? 'text-amber-400' : 'text-slate-200'}`}>
+                            {titanResult.entropy.toFixed(3)}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">Energy: {titanResult.energy.toFixed(1)}</span>
+                        </div>
+                        <div className="p-2 bg-slate-950/50 rounded-lg">
+                          <span className="text-slate-400 block text-[10px]">REJECTION GATE</span>
+                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                            titanResult.isRejected ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+                          }`}>
+                            {titanResult.isRejected ? 'REJECTED' : 'ACCEPTED'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block mt-1">
+                            {titanResult.latencyMs.toFixed(2)} ms latency
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-center py-2">
+                        Present a hand to the camera to view live TITAN GCN activations and uncertainty estimates.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
