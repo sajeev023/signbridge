@@ -278,24 +278,27 @@ def run_experiments():
     num_classes = len(classes)
     samples = payload["samples"]
 
-    # Incorporate real ground truth evaluation samples into the untouched test set
-    real_gt_path = Path("evaluation/real_world_landmarks_dataset.json")
+    # Ingest verified empirical real-human benchmark captures
+    real_gt_path = Path("backend/data/real_human_evaluation_dataset.json")
+    if not real_gt_path.exists():
+        real_gt_path = Path("evaluation/real_world_landmarks_dataset.json")
     if real_gt_path.exists():
         with open(real_gt_path, "r", encoding="utf-8") as f:
-            real_data = json.load(f)
-        for s in real_data:
-            lbl = s.get("signLabel")
-            if lbl in classes and s.get("convention") == "Single-Hand (Chart)":
-                feat42 = extract_canonical_features(s["groundTruth"]).tolist()
-                pid = s.get("participantId", "Real_Subject")
-                assigned_split = "train" if pid == "Signer_1" else "test"
+            real_data_payload = json.load(f)
+        real_records = real_data_payload.get("records", real_data_payload if isinstance(real_data_payload, list) else [])
+        for s in real_records:
+            lbl = s.get("alphabet_label") or s.get("signLabel")
+            if lbl in classes:
+                feat42 = s.get("features_42") or extract_canonical_features(s.get("landmarks") or s.get("groundTruth")).tolist()
+                pid = s.get("signer_id") or s.get("participantId", "Real_Subject")
+                assigned_split = s.get("cohort_split", "train" if pid in ["Signer_1", "Signer_2"] else "test")
                 samples.append({
-                    "sample_id": f"EMPIRICAL_{s['sampleId']}",
+                    "sample_id": s.get("capture_id") or f"EMPIRICAL_{s.get('sampleId')}",
                     "sign_label": lbl,
                     "class_idx": classes.index(lbl),
                     "participant_id": pid,
                     "split": assigned_split,
-                    "landmarks": s["groundTruth"],
+                    "landmarks": s.get("landmarks") or s.get("groundTruth"),
                     "features_42": feat42,
                     "is_real_camera": True
                 })
@@ -402,19 +405,44 @@ def run_experiments():
     mlp.fit(X_train, y_train)
     t_train_mlp = time.perf_counter() - t0
 
-    # Best weights transposed for forward pass (w @ x + b)
+    # Optimize calibration temperature T on validation data
+    z1_val = np.maximum(0, X_val @ mlp.coefs_[0] + mlp.intercepts_[0])
+    z2_val = np.maximum(0, z1_val @ mlp.coefs_[1] + mlp.intercepts_[1])
+    logits_val = z2_val @ mlp.coefs_[2] + mlp.intercepts_[2]
+
+    best_T = 1.0
+    best_val_ece = 1.0
+    for T in [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0]:
+        l_scaled = logits_val / T
+        l_scaled -= np.max(l_scaled, axis=1, keepdims=True)
+        p_scaled = np.exp(l_scaled) / np.sum(l_scaled, axis=1, keepdims=True)
+        m_val = compute_comprehensive_metrics(y_val, np.argmax(p_scaled, axis=1), p_scaled, classes)
+        if m_val["ece"] < best_val_ece:
+            best_val_ece = m_val["ece"]
+            best_T = T
+
+    print(f"[CALIBRATION] Optimal Validation Temperature T = {best_T:.2f} (Val ECE: {best_val_ece:.4f})")
+
+    # Apply calibrated temperature scaling directly to final layer weights
+    w3_calib = (mlp.coefs_[2] / best_T).T.tolist()
+    b3_calib = (mlp.intercepts_[2] / best_T).tolist()
+
     best_weights = {
         "w1": mlp.coefs_[0].T.tolist(),
         "b1": mlp.intercepts_[0].tolist(),
         "w2": mlp.coefs_[1].T.tolist(),
         "b2": mlp.intercepts_[1].tolist(),
-        "w3": mlp.coefs_[2].T.tolist(),
-        "b3": mlp.intercepts_[2].tolist()
+        "w3": w3_calib,
+        "b3": b3_calib
     }
 
-    # Evaluate on Test Set
+    # Evaluate on Test Set with calibrated probabilities
     t0 = time.perf_counter()
-    test_probs = mlp.predict_proba(X_test)
+    z1_test = np.maximum(0, X_test @ mlp.coefs_[0] + mlp.intercepts_[0])
+    z2_test = np.maximum(0, z1_test @ mlp.coefs_[1] + mlp.intercepts_[1])
+    logits_test = (z2_test @ mlp.coefs_[2] + mlp.intercepts_[2]) / best_T
+    logits_test -= np.max(logits_test, axis=1, keepdims=True)
+    test_probs = np.exp(logits_test) / np.sum(np.exp(logits_test), axis=1, keepdims=True)
     test_preds = np.argmax(test_probs, axis=1)
     t_inf_mlp = (time.perf_counter() - t0) / len(X_test) * 1e6
 
