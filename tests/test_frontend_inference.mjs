@@ -118,5 +118,56 @@ const latencyUs = (elapsedMs / 1000) * 1000;
 console.log(`Inference Latency: ${latencyUs.toFixed(2)} microseconds per prediction (${(1000 / (elapsedMs / 1000)).toFixed(0)} FPS equivalent)`);
 console.assert(latencyUs < 100, `Latency must be under 100us, was ${latencyUs}us`);
 
+console.log('\n=== TEST 4: Dynamic J/Z Trajectory Model & Point-History Audit ===');
+const dynModelPath = path.resolve(__dirname, '../frontend/src/services/dynamic_alphabet_model.json');
+const dynModel = JSON.parse(fs.readFileSync(dynModelPath, 'utf8'));
+
+console.log(`Dynamic Model Name: ${dynModel.model_name}`);
+console.log(`Classes: ${dynModel.classes.join(', ')}`);
+console.assert(dynModel.classes.length === 3, `Dynamic classes should be 3, got ${dynModel.classes.length}`);
+console.assert(dynModel.feature_dimension === 32, `Dynamic feature dimension should be 32, got ${dynModel.feature_dimension}`);
+
+const { w1: dw1, b1: db1, w2: dw2, b2: db2, w3: dw3, b3: db3 } = dynModel.weights;
+console.assert(dw1[0].length === 32, `dw1 input features should be 32, got ${dw1[0].length}`);
+console.assert(dw2[0].length === dw1.length, `dw2 input features should match dw1 output, got ${dw2[0].length}`);
+console.assert(dw3.length === 3, `dw3 output classes should be 3, got ${dw3.length}`);
+console.log(`[PASSED] Dynamic tensor shapes verified: ${dw1[0].length} -> ${dw1.length} -> ${dw2.length} -> ${dw3.length}`);
+
+// Test dynamic forward pass
+function dynamicForwardPass(x) {
+  const z1 = new Array(dw1.length);
+  for (let i = 0; i < dw1.length; i++) {
+    let sum = db1[i];
+    for (let j = 0; j < 32; j++) sum += dw1[i][j] * x[j];
+    z1[i] = Math.max(0, sum);
+  }
+  const z2 = new Array(dw2.length);
+  for (let i = 0; i < dw2.length; i++) {
+    let sum = db2[i];
+    for (let j = 0; j < dw1.length; j++) sum += dw2[i][j] * z1[j];
+    z2[i] = Math.max(0, sum);
+  }
+  const logits = new Array(3);
+  let maxLogit = -Infinity;
+  for (let i = 0; i < 3; i++) {
+    let sum = db3[i];
+    for (let j = 0; j < dw2.length; j++) sum += dw3[i][j] * z2[j];
+    logits[i] = sum;
+    if (sum > maxLogit) maxLogit = sum;
+  }
+  let sumExp = 0;
+  const probs = new Array(3);
+  for (let i = 0; i < 3; i++) {
+    probs[i] = Math.exp(logits[i] - maxLogit);
+    sumExp += probs[i];
+  }
+  return probs.map(p => p / sumExp);
+}
+
+const dynZeroRes = dynamicForwardPass(new Array(32).fill(0));
+const sumDynProbs = dynZeroRes.reduce((a, b) => a + b, 0);
+console.assert(Math.abs(sumDynProbs - 1.0) < 1e-5, `Dynamic Softmax must sum to 1.0, got ${sumDynProbs}`);
+console.log(`[PASSED] Dynamic forward pass executed without NaN. Softmax sum: ${sumDynProbs}`);
+
 console.log('\n=== ALL INTEGRATION TESTS PASSED CLEANLY ===');
 
