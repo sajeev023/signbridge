@@ -1,0 +1,68 @@
+{
+  "dataset_name": "SIGNBRIDGE TITAN ASL Spatial-Temporal Manual Alphabet Dataset",
+  "version": "2.0.0-asl-reference-aligned",
+  "reference_chart": "G\u00c9RARD AFLAGUE COLLECTION (772x1024)",
+  "vocabulary": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "NEUTRAL",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z"
+  ],
+  "total_samples": 4600,
+  "static_samples": 4000,
+  "dynamic_episodes": 600,
+  "splits": {
+    "train": {
+      "samples": 2240,
+      "signers": [
+        "Signer_2",
+        "Signer_1"
+      ]
+    },
+    "val": {
+      "samples": 1120,
+      "signers": [
+        "Signer_3"
+      ]
+    },
+    "test": {
+      "samples": 1240,
+      "signers": [
+        "Signer_5",
+        "Signer_4"
+      ]
+    }
+  },
+  "real_human_benchmark_records": 42,
+  "real_human_signers": [
+    "Signer_1",
+    "Signer_2",
+    "Signer_3",
+    "Signer_4",
+    "Signer_5",
+    "Signer_6"
+  ]
+}
