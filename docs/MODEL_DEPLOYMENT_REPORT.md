@@ -5,6 +5,7 @@
 **Live Production URL:** `https://frontend-six-kohl-7qar48leqb.vercel.app`  
 **Dedicated Branch:** `experiment/asl-alphabet-genesis`  
 **Base Commit:** `a639db17be55ed39c761df9e60d2a492d3e847fe` (`feat(ui): redesign live alphabet recognizer with mobile-first aesthetic and clean custom vercel alias`)  
+**Training Experiment Commit:** `efb8898c0c34f18696292b304f0b1aa60b8fa956` (`feat(alphabet): project alphabet genesis - real-human and biomechanical ASL recognition engine`)  
 **Deployment Date:** November 2026  
 **Auditors:** Computer Vision & Production ML Engineering Team  
 
