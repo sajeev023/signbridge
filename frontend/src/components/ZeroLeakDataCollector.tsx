@@ -16,7 +16,7 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import { LandmarkPoint } from '../services/alphabetInferenceEngine';
+import { LandmarkPoint, alphabetInferenceEngine } from '../services/alphabetInferenceEngine';
 
 export interface ZeroLeakSample {
   id: string;
@@ -107,56 +107,66 @@ export const ZeroLeakDataCollector: React.FC<ZeroLeakDataCollectorProps> = ({
 
   const isDynamicSign = selectedLetter === 'J' || selectedLetter === 'Z';
 
-  // Compute 42 biomechanical angles/curvatures from 21 landmarks
+  // Compute canonical 42 continuous biomechanical invariant features
   const extractBiomechanics42 = (pts: LandmarkPoint[]): number[] => {
-    const feats: number[] = [];
-    const wrist = pts[0];
-    const palmScale = Math.hypot(pts[9].x - wrist.x, pts[9].y - wrist.y) || 1.0;
+    if (!pts || pts.length < 21) return new Array(42).fill(0);
+    return alphabetInferenceEngine.extractSingleHandFeatures(pts);
+  };
 
-    // 1. Normalized 3D distances from wrist to fingertips (5)
-    const fingertips = [4, 8, 12, 16, 20];
-    for (const f of fingertips) {
-      feats.push(Math.hypot(pts[f].x - wrist.x, pts[f].y - wrist.y) / palmScale);
+  // Dedicated Letter A Pose Suitability Evaluator
+  const evaluateLetterASuitability = (pts: LandmarkPoint[] | null) => {
+    if (!pts || pts.length < 21) {
+      return {
+        isSuitable: false,
+        fistCurled: false,
+        thumbElevated: false,
+        thumbLateral: false,
+        thumbNotCrossing: false,
+        thumbNotTucked: false,
+        feedback: 'No hand detected. Position hand in camera view.'
+      };
     }
 
-    // 2. Inter-fingertip distances (10 pairs)
-    for (let i = 0; i < fingertips.length; i++) {
-      for (let j = i + 1; j < fingertips.length; j++) {
-        feats.push(
-          Math.hypot(
-            pts[fingertips[i]].x - pts[fingertips[j]].x,
-            pts[fingertips[i]].y - pts[fingertips[j]].y
-          ) / palmScale
-        );
-      }
+    const feats = extractBiomechanics42(pts);
+    const extIdx = feats[1];
+    const extMid = feats[2];
+    const extRing = feats[3];
+    const extPinky = feats[4];
+    const cosSpread = feats[15];
+    const distThumbMid = feats[20];
+    const thumbX = feats[24];
+    const thumbY = feats[25];
+
+    const fistCurled = extIdx < 0.35 && extMid < 0.35 && extRing < 0.35 && extPinky < 0.35;
+    const thumbElevated = thumbY >= 0.55;
+    const thumbLateral = thumbX >= 0.12;
+    const thumbNotCrossing = cosSpread < 0.15;
+    const thumbNotTucked = distThumbMid >= 0.38;
+
+    const isSuitable = fistCurled && thumbElevated && thumbLateral && thumbNotCrossing && thumbNotTucked;
+
+    let feedback = 'Pose matches canonical ASL Letter A criteria. Ready to capture.';
+    if (!fistCurled) {
+      feedback = 'Curl index, middle, ring & pinky fingers tightly into palm.';
+    } else if (!thumbElevated) {
+      feedback = 'Raise thumb tip upright along radial edge of index finger (too low, resembles E).';
+    } else if (!thumbLateral) {
+      feedback = 'Keep thumb on lateral radial margin (crossing palm, resembles S).';
+    } else if (!thumbNotCrossing) {
+      feedback = 'Do not fold thumb across anterior knuckles (resembles S).';
+    } else if (!thumbNotTucked) {
+      feedback = 'Do not tuck thumb under curled fingers (resembles M/N/T).';
     }
 
-    // 3. Joint angles (15 angles: 3 per finger)
-    const fingerJoints = [
-      [0, 1, 2], [1, 2, 3], [2, 3, 4],       // Thumb
-      [0, 5, 6], [5, 6, 7], [6, 7, 8],       // Index
-      [0, 9, 10], [9, 10, 11], [10, 11, 12], // Middle
-      [0, 13, 14], [13, 14, 15], [14, 15, 16], // Ring
-      [0, 17, 18], [17, 18, 19], [18, 19, 20]  // Pinky
-    ];
-
-    for (const [a, b, c] of fingerJoints) {
-      const v1 = { x: pts[a].x - pts[b].x, y: pts[a].y - pts[b].y };
-      const v2 = { x: pts[c].x - pts[b].x, y: pts[c].y - pts[b].y };
-      const dot = v1.x * v2.x + v1.y * v2.y;
-      const mag1 = Math.hypot(v1.x, v1.y) || 1e-6;
-      const mag2 = Math.hypot(v2.x, v2.y) || 1e-6;
-      const cosA = Math.max(-1.0, Math.min(1.0, dot / (mag1 * mag2)));
-      feats.push(Math.acos(cosA) / Math.PI); // Normalized [0, 1]
-    }
-
-    // 4. Palm curvature and planarity (12 feats to complete 42)
-    while (feats.length < 42) {
-      const idx = feats.length % fingertips.length;
-      feats.push((pts[fingertips[idx]].y - wrist.y) / palmScale);
-    }
-
-    return feats.slice(0, 42);
+    return {
+      isSuitable,
+      fistCurled,
+      thumbElevated,
+      thumbLateral,
+      thumbNotCrossing,
+      thumbNotTucked,
+      feedback
+    };
   };
 
   // Static capture
@@ -569,6 +579,63 @@ export const ZeroLeakDataCollector: React.FC<ZeroLeakDataCollectorProps> = ({
               })}
             </div>
           </div>
+
+          {/* 4.5 Dedicated Letter A Mastery Pose Suitability Guide */}
+          {selectedLetter === 'A' && (() => {
+            const suit = evaluateLetterASuitability(currentLandmarks);
+            return (
+              <div className="p-3.5 bg-slate-900/80 rounded-xl border border-amber-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-amber-400/50 bg-slate-950 flex-shrink-0">
+                    <img
+                      src="/references/crops/A.png"
+                      alt="ASL Letter A Reference"
+                      className="w-full h-full object-contain"
+                    />
+                    <span className="absolute bottom-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-bold px-1 rounded-tl">
+                      Aa
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-100">ASL Letter A Suitability Gate</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                        suit.isSuitable
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}>
+                        {suit.isSuitable ? '✓ Optimal A Pose' : '⚠ Adjust Handshape'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      {suit.feedback}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-[11px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                  <span className={suit.fistCurled ? 'text-emerald-400 font-medium' : 'text-slate-500'}>
+                    {suit.fistCurled ? '✓' : '✗'} 4 Fingers Curled
+                  </span>
+                  <span className={suit.thumbElevated ? 'text-emerald-400 font-medium' : 'text-slate-500'}>
+                    {suit.thumbElevated ? '✓' : '✗'} Thumb Upright
+                  </span>
+                  <span className={suit.thumbLateral ? 'text-emerald-400 font-medium' : 'text-slate-500'}>
+                    {suit.thumbLateral ? '✓' : '✗'} Thumb Lateral
+                  </span>
+                  <span className={suit.thumbNotCrossing ? 'text-emerald-400 font-medium' : 'text-slate-500'}>
+                    {suit.thumbNotCrossing ? '✓' : '✗'} Not Crossing (≠S)
+                  </span>
+                  <span className={suit.thumbNotTucked ? 'text-emerald-400 font-medium' : 'text-slate-500'}>
+                    {suit.thumbNotTucked ? '✓' : '✗'} Not Tucked (≠M/T)
+                  </span>
+                  <span className="text-amber-400 font-semibold">
+                    Target: A Only
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 5. Capture Controls */}
           <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
