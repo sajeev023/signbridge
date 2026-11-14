@@ -156,3 +156,44 @@ def is_z_handshape_context(landmarks: List[Dict[str, float]], palm_scale: float)
     pky_curl = math.dist([landmarks[20]["x"], landmarks[20]["y"]], [landmarks[17]["x"], landmarks[17]["y"]]) / scale
 
     return bool(idx_ext > 0.45 and mid_curl < 0.65 and pky_curl < 0.65)
+
+
+def verify_j_trajectory_kinematics(points: np.ndarray, palm_scale: float) -> Tuple[bool, str]:
+    """
+    Kinematic validation gate for ASL 'J' temporal trajectory:
+    1. Overall downward movement (dy_total > 0.15 * palm_scale).
+    2. Hook direction to the left in the terminal 40% of the stroke (dx_hook < -0.015 * palm_scale).
+    """
+    if len(points) < 6:
+        return False, "INSUFFICIENT_POINTS"
+    dy_total = points[-1, 1] - points[0, 1]
+    if dy_total < 0.12 * palm_scale:
+        return False, "INSUFFICIENT_DOWNWARD_DISPLACEMENT"
+    split = int(len(points) * 0.60)
+    dx_hook = points[-1, 0] - points[split, 0]
+    if dx_hook > 0.0:
+        return False, "INVERTED_HOOK_DIRECTION"
+    return True, "VALID_J_TRAJECTORY"
+
+
+def verify_z_trajectory_kinematics(points: np.ndarray, palm_scale: float) -> Tuple[bool, str]:
+    """
+    Kinematic validation gate for ASL 'Z' temporal trajectory:
+    1. Stroke 1 moves right (+x).
+    2. Stroke 2 moves diagonal down-left (-x, +y).
+    3. Stroke 3 moves right (+x).
+    """
+    n = len(points)
+    if n < 8:
+        return False, "INSUFFICIENT_POINTS"
+    p_start = points[0]
+    p_s1 = points[n // 3]
+    p_s2 = points[2 * n // 3]
+    p_end = points[-1]
+    if (p_s1[0] - p_start[0]) < 0.04 * palm_scale:
+        return False, "STROKE_1_NOT_RIGHTWARD"
+    if (p_s2[0] - p_s1[0]) > 0.05 * palm_scale or (p_s2[1] - p_s1[1]) < 0.04 * palm_scale:
+        return False, "STROKE_2_NOT_DIAGONAL_DOWN_LEFT"
+    if (p_end[0] - p_s2[0]) < 0.04 * palm_scale:
+        return False, "STROKE_3_NOT_RIGHTWARD_OR_MISSING"
+    return True, "VALID_Z_TRAJECTORY"
