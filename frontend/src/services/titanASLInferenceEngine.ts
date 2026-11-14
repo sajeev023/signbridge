@@ -370,10 +370,16 @@ export class TitanASLInferenceEngine {
         }
       }
 
+      // Effective adjacency matrix: A_eff = A_norm + B_learned (2s-AGCN adaptive graph)
+      const bAdj = this.weights['spatial_encoder.learned_adj'];
+      const effectiveAdj: number[][] = Array.from({ length: N }, (_, i) =>
+        Array.from({ length: N }, (_, j) => this.normAdj[i][j] + (bAdj ? bAdj[i][j] : 0))
+      );
+
       // GCN Layer 0
-      h = this.runGCNLayer(h, 0);
+      h = this.runGCNLayer(h, 0, effectiveAdj);
       // GCN Layer 1
-      h = this.runGCNLayer(h, 1);
+      h = this.runGCNLayer(h, 1, effectiveAdj);
 
       // Readout pooling: Mean and Max
       const pooled: number[] = new Array(hiddenDim * 2).fill(0);
@@ -391,18 +397,26 @@ export class TitanASLInferenceEngine {
       // Readout proj -> outDim
       const wRead = this.weights['spatial_encoder.readout_proj.weight'];
       const bRead = this.weights['spatial_encoder.readout_proj.bias'];
-      let zSpatial: number[] = new Array(hiddenDim).fill(0);
+      const gNorm = this.weights['spatial_encoder.norm.weight'];
+      const bNorm = this.weights['spatial_encoder.norm.bias'];
+
+      let zSpatialRaw: number[] = new Array(hiddenDim).fill(0);
       for (let o = 0; o < hiddenDim; o++) {
         let sum = bRead[o];
         for (let k = 0; k < pooled.length; k++) sum += pooled[k] * wRead[o][k];
-        zSpatial[o] = this.gelu(sum);
+        zSpatialRaw[o] = this.gelu(sum);
       }
+      let zSpatial = this.layerNorm(zSpatialRaw, gNorm, bNorm);
 
       // Aux proj
       const wAux0 = this.weights['spatial_encoder.aux_proj.0.weight'];
       const bAux0 = this.weights['spatial_encoder.aux_proj.0.bias'];
       const wAux2 = this.weights['spatial_encoder.aux_proj.2.weight'];
       const bAux2 = this.weights['spatial_encoder.aux_proj.2.bias'];
+      const gAux3 = this.weights['spatial_encoder.aux_proj.3.weight'];
+      const bAux3 = this.weights['spatial_encoder.aux_proj.3.bias'];
+      const gFuse = this.weights['spatial_encoder.fusion_norm.weight'];
+      const bFuse = this.weights['spatial_encoder.fusion_norm.bias'];
 
       if (wAux0 && wAux2) {
         const auxHidden: number[] = new Array(hiddenDim).fill(0);
@@ -411,25 +425,36 @@ export class TitanASLInferenceEngine {
           for (let k = 0; k < auxFeats.length; k++) sum += auxFeats[k] * wAux0[o][k];
           auxHidden[o] = this.gelu(sum);
         }
+        const auxOut: number[] = new Array(hiddenDim).fill(0);
         for (let o = 0; o < hiddenDim; o++) {
           let sum = bAux2[o];
           for (let k = 0; k < auxHidden.length; k++) sum += auxHidden[k] * wAux2[o][k];
-          zSpatial[o] += sum;
+          auxOut[o] = sum;
         }
+        const auxNorm = this.layerNorm(auxOut, gAux3, bAux3);
+        const fused = new Array(hiddenDim);
+        for (let o = 0; o < hiddenDim; o++) {
+          fused[o] = zSpatial[o] + auxNorm[o];
+        }
+        zSpatial = this.layerNorm(fused, gFuse, bFuse);
       }
 
       // Classifier: Linear -> LayerNorm -> GELU -> Linear
       const wCls0 = this.weights['classifier.0.weight'];
       const bCls0 = this.weights['classifier.0.bias'];
+      const gCls1 = this.weights['classifier.1.weight'];
+      const bCls1 = this.weights['classifier.1.bias'];
       const wCls4 = this.weights['classifier.4.weight'];
       const bCls4 = this.weights['classifier.4.bias'];
 
-      const clsHidden: number[] = new Array(wCls0.length).fill(0);
+      const clsLin0: number[] = new Array(wCls0.length).fill(0);
       for (let o = 0; o < wCls0.length; o++) {
         let sum = bCls0[o];
         for (let k = 0; k < zSpatial.length; k++) sum += zSpatial[k] * wCls0[o][k];
-        clsHidden[o] = this.gelu(sum);
+        clsLin0[o] = sum;
       }
+      const clsNorm = this.layerNorm(clsLin0, gCls1, bCls1);
+      const clsHidden = clsNorm.map(x => this.gelu(x));
 
       const logits: number[] = new Array(this.classes.length).fill(0);
       for (let o = 0; o < this.classes.length; o++) {
@@ -444,20 +469,22 @@ export class TitanASLInferenceEngine {
     }
   }
 
-  private runGCNLayer(h: number[][], layerIdx: number): number[][] {
+  private runGCNLayer(h: number[][], layerIdx: number, adjMatrix: number[][]): number[][] {
     const N = 21;
     const wN = this.weights[`spatial_encoder.gcn_layers.${layerIdx}.w_neighbor.weight`];
     const wS = this.weights[`spatial_encoder.gcn_layers.${layerIdx}.w_self.weight`];
     const bS = this.weights[`spatial_encoder.gcn_layers.${layerIdx}.w_self.bias`];
+    const gLN = this.weights[`spatial_encoder.gcn_layers.${layerIdx}.layer_norm.weight`];
+    const bLN = this.weights[`spatial_encoder.gcn_layers.${layerIdx}.layer_norm.bias`];
 
     const outDim = wS.length;
     const inDim = h[0].length;
 
-    // A_norm * H
+    // A_eff * H
     const hNeighbor: number[][] = Array.from({ length: N }, () => Array(inDim).fill(0));
     for (let i = 0; i < N; i++) {
       for (let j = 0; j < N; j++) {
-        const a = this.normAdj[i][j];
+        const a = adjMatrix[i][j];
         if (a !== 0) {
           for (let d = 0; d < inDim; d++) {
             hNeighbor[i][d] += a * h[j][d];
@@ -468,14 +495,46 @@ export class TitanASLInferenceEngine {
 
     const out: number[][] = Array.from({ length: N }, () => Array(outDim).fill(0));
     for (let i = 0; i < N; i++) {
+      const actRow = new Array(outDim);
       for (let o = 0; o < outDim; o++) {
-        let sum = bS[o];
+        let sum = bS ? bS[o] : 0;
         for (let d = 0; d < inDim; d++) {
           sum += hNeighbor[i][d] * wN[o][d] + h[i][d] * wS[o][d];
         }
-        // Residual connection
-        out[i][o] = this.gelu(sum) + (h[i][o] || 0);
+        actRow[o] = this.gelu(sum);
       }
+      const normRow = this.layerNorm(actRow, gLN, bLN);
+      for (let o = 0; o < outDim; o++) {
+        // Residual connection: H + LayerNorm(GELU(...))
+        out[i][o] = (h[i][o] || 0) + normRow[o];
+      }
+    }
+    return out;
+  }
+
+  private layerNorm(
+    x: number[],
+    gamma: number[] | null,
+    beta: number[] | null,
+    eps: number = 1e-5
+  ): number[] {
+    const N = x.length;
+    let sum = 0;
+    for (let i = 0; i < N; i++) sum += x[i];
+    const mean = sum / N;
+
+    let varSum = 0;
+    for (let i = 0; i < N; i++) {
+      const diff = x[i] - mean;
+      varSum += diff * diff;
+    }
+    const invStd = 1.0 / Math.sqrt(varSum / N + eps);
+
+    const out = new Array(N);
+    for (let i = 0; i < N; i++) {
+      const g = gamma ? gamma[i] : 1.0;
+      const b = beta ? beta[i] : 0.0;
+      out[i] = ((x[i] - mean) * invStd) * g + b;
     }
     return out;
   }

@@ -58,6 +58,10 @@ def landmarks_to_node_features(
 
     # (21, 6) feature matrix
     node_features = np.hstack([rel_wrist, rel_parent])
+    
+    # Occlusion-aware robust sanitization: clip extreme outliers and replace NaNs
+    node_features = np.nan_to_num(node_features, nan=0.0, posinf=5.0, neginf=-5.0)
+    node_features = np.clip(node_features, -10.0, 10.0)
     return node_features.astype(np.float32)
 
 
@@ -145,6 +149,11 @@ class SpatialGraphEncoder(nn.Module):
         norm_adj = get_default_normalized_adjacency()
         self.register_buffer("norm_adj", norm_adj)
 
+        # Adaptive data-driven graph topology (2s-AGCN / ST-GCN++):
+        # Learned parameter matrix B (21x21) capturing non-local functional dependencies
+        # Initialized to zeros for strict backward compatibility with fixed normalized Laplacian
+        self.learned_adj = nn.Parameter(torch.zeros(NUM_HAND_LANDMARKS, NUM_HAND_LANDMARKS))
+
     def forward(
         self,
         node_features: torch.Tensor,
@@ -160,7 +169,10 @@ class SpatialGraphEncoder(nn.Module):
             z_spatial: (B, out_dim) latent representation of static handshape
         """
         B, N, _ = node_features.shape
-        adj = custom_adj if custom_adj is not None else self.norm_adj
+        base_adj = custom_adj if custom_adj is not None else self.norm_adj
+        
+        # Effective adjacency matrix: A_eff = A_norm + B_learned
+        effective_adj = base_adj + self.learned_adj
 
         # Joint positional embeddings
         joint_ids = torch.arange(N, device=node_features.device).unsqueeze(0).expand(B, -1)
@@ -170,9 +182,9 @@ class SpatialGraphEncoder(nn.Module):
         h = torch.cat([node_features, j_emb], dim=-1)  # (B, N, 6 + pos_embed_dim)
         h = F.gelu(self.input_proj(h))
 
-        # GCN forward with residual connections
+        # GCN forward with residual connections using adaptive graph
         for layer in self.gcn_layers:
-            h = h + layer(h, adj)
+            h = h + layer(h, effective_adj)
 
         # Readout: Mean and Max Pooling across all 21 nodes
         h_mean = torch.mean(h, dim=1)  # (B, hidden_dim)
