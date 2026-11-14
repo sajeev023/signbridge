@@ -67,6 +67,35 @@ const ASL_LETTERS = [
   'U', 'V', 'W', 'X', 'Y', 'Z'
 ];
 
+export const ASL_SIGN_INSTRUCTIONS: Record<string, string> = {
+  A: 'Make a fist with thumb resting straight upright along the radial side of index finger.',
+  B: 'Extend all 4 fingers straight up together; fold thumb flat across the palm.',
+  C: 'Curve all fingers and thumb to form an open C-arc facing medial/forward.',
+  D: 'Point index finger straight up; touch thumb tip to middle, ring, and pinky to form a loop.',
+  E: 'Curl all 4 fingertips down tightly; fold thumb completely across underneath the curled tips.',
+  F: 'Touch index tip to thumb tip to form a circle; keep middle, ring, and pinky straight up.',
+  G: 'Point index finger horizontally forward; extend thumb parallel to it; curl other fingers.',
+  H: 'Extend index and middle fingers together horizontally; tuck thumb in; curl other fingers.',
+  I: 'Make a fist and extend only the pinky finger straight up; thumb folded over fingers.',
+  J: 'Dynamic: Hold I-pose (pinky up) and draw a downward J-curve in the air, hooking upward.',
+  K: 'Point index up, angle middle forward/up; rest thumb tip against middle finger PIP joint.',
+  L: 'Point index straight up; extend thumb laterally at 90° angle to form an L shape.',
+  M: 'Make a fist with thumb tucked under the first 3 fingers (index, middle, ring).',
+  N: 'Make a fist with thumb tucked under the first 2 fingers (index, middle).',
+  O: 'Touch all 4 fingertips to the thumb tip to form an O-shaped circle.',
+  P: 'Point index forward/down and middle straight down; thumb between them (downward K).',
+  Q: 'Point index and thumb downward in a parallel pinch (downward G); other fingers curled.',
+  R: 'Extend index and middle fingers straight up and cross middle over index finger.',
+  S: 'Make a fist with thumb folded horizontally across the front of all curled fingers.',
+  T: 'Make a fist with thumb tucked under the index finger, poking up between index and middle.',
+  U: 'Extend index and middle fingers straight up together, held tightly parallel.',
+  V: 'Extend index and middle fingers straight up and spread apart in a V peace sign.',
+  W: 'Extend index, middle, and ring fingers straight up and spread apart in a W shape.',
+  X: 'Bend index finger into a hook/claw at PIP and DIP joints; other fingers curled into fist.',
+  Y: 'Extend thumb and pinky fully outward in opposite directions (shaka); curl middle 3 fingers.',
+  Z: 'Dynamic: Point index finger forward/up and draw a 3-stroke Z in the air (right, down-left, right).'
+};
+
 // Canonical synthesis for offline test harness validation
 function generateSyntheticLandmarks(letter: string): LandmarkPoint[] {
   // Base wrist
@@ -1004,29 +1033,39 @@ export const ZeroLeakDataCollector: React.FC<ZeroLeakDataCollectorProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-amber-400/50 bg-slate-950 flex-shrink-0">
                       <img
-                        src="/references/crops/A.png"
-                        alt="ASL Letter A Reference"
+                        src={`/references/crops/${selectedLetter}.png`}
+                        alt={`ASL Letter ${selectedLetter} Reference`}
                         className="w-full h-full object-contain"
+                        onError={(e) => {
+                          // Fallback gracefully if image load fails
+                          (e.target as HTMLElement).style.opacity = '0.3';
+                        }}
                       />
                       <span className="absolute bottom-0 right-0 bg-amber-500 text-slate-950 text-[9px] font-bold px-1 rounded-tl">
-                        Aa
+                        {selectedLetter}{selectedLetter.toLowerCase()}
                       </span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-100">Live Evaluation Diagnostics HUD</span>
+                        <span className="font-bold text-sm text-slate-100">
+                          {selectedLetter === 'A' ? 'Letter A Specialist Diagnostics HUD' : `Target Pose: ASL Letter '${selectedLetter}'`}
+                        </span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                          diag.predictedLabel === 'A (CONFIRMED)'
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                            : diag.predictedLabel.startsWith('REJECT_HARD_NEGATIVE')
-                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                          selectedLetter === 'A'
+                            ? (diag.predictedLabel === 'A (CONFIRMED)'
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                : diag.predictedLabel.startsWith('REJECT_HARD_NEGATIVE')
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                                : 'bg-amber-500/20 text-amber-300 border-amber-500/30')
+                            : (activeLandmarks && diag.isSuitable
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                : 'bg-slate-800 text-slate-400 border-slate-700')
                         }`}>
-                          {diag.predictedLabel}
+                          {selectedLetter === 'A' ? diag.predictedLabel : (isDynamicSign ? 'DYNAMIC STROKE' : (activeLandmarks ? 'LANDMARKS TRACKED' : 'WAITING FOR HAND'))}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 mt-0.5">
-                        {diag.feedback}
+                      <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
+                        {ASL_SIGN_INSTRUCTIONS[selectedLetter] || diag.feedback}
                       </p>
                     </div>
                   </div>
@@ -1039,7 +1078,7 @@ export const ZeroLeakDataCollector: React.FC<ZeroLeakDataCollectorProps> = ({
                     </span>
                     <span className="px-2 py-1 rounded bg-slate-800 text-indigo-300 border border-slate-700 flex items-center gap-1 font-mono">
                       <Cpu className="w-3 h-3" />
-                      Features: {diag.featureCount}/42
+                      Features: {isDynamicSign ? '32 (Trajectory)' : `${diag.featureCount}/42 (Static)`}
                     </span>
                     <span className="px-2 py-1 rounded bg-slate-800 text-amber-300 border border-slate-700 font-mono">
                       Latency: {diag.latencyMs.toFixed(2)}ms
@@ -1050,45 +1089,82 @@ export const ZeroLeakDataCollector: React.FC<ZeroLeakDataCollectorProps> = ({
                   </div>
                 </div>
 
-                {/* Real-time probability bar */}
-                <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Letter A Specialist Probability P(A | x):</span>
-                    <span className="font-mono font-bold text-amber-300">
-                      {(diag.probA * 100).toFixed(1)}% (Non-A: {(diag.probOther * 100).toFixed(1)}%)
+                {/* Conditional letter diagnostics or signing guidance */}
+                {selectedLetter === 'A' ? (
+                  <>
+                    {/* Real-time probability bar */}
+                    <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400">Letter A Specialist Probability P(A | x):</span>
+                        <span className="font-mono font-bold text-amber-300">
+                          {(diag.probA * 100).toFixed(1)}% (Non-A: {(diag.probOther * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                        <div
+                          className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full transition-all duration-150"
+                          style={{ width: `${Math.min(100, Math.max(0, diag.probA * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Kinematic Gate Checklist */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                      <div className={`flex items-center gap-1.5 ${diag.fistCurled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span>{diag.fistCurled ? '✓' : '✗'}</span>
+                        <span>4 Fingers Curled</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${diag.thumbElevated ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span>{diag.thumbElevated ? '✓' : '✗'}</span>
+                        <span>Thumb Upright</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${diag.thumbLateral ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span>{diag.thumbLateral ? '✓' : '✗'}</span>
+                        <span>Thumb Lateral</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${diag.thumbNotCrossing ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span>{diag.thumbNotCrossing ? '✓' : '✗'}</span>
+                        <span>No Cross (≠S)</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${diag.thumbNotTucked ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span>{diag.thumbNotTucked ? '✓' : '✗'}</span>
+                        <span>No Tuck (≠M/T)</span>
+                      </div>
+                    </div>
+                  </>
+                ) : isDynamicSign ? (
+                  <div className="p-3 bg-cyan-950/20 border border-cyan-500/30 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-cyan-200">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                      <div>
+                        <span className="font-semibold text-xs">Dynamic Trajectory Mode Active for '{selectedLetter}'</span>
+                        <p className="text-[11px] text-cyan-300/80">
+                          {selectedLetter === 'J'
+                            ? 'Hold ASL "I" pose, click Record, and smoothly draw a J-curve downward then hooking upward.'
+                            : 'Hold ASL "D" pose, click Record, and draw a 3-stroke Z in the air (right, down-left, right).'}
+                        </p>
+                      </div>
+                    </div>
+                    {isRecordingDynamic && (
+                      <div className="flex items-center gap-2 min-w-[140px]">
+                        <span className="text-[10px] font-mono">{dynamicProgress}%</span>
+                        <div className="w-24 h-2 rounded-full bg-slate-800 overflow-hidden">
+                          <div className="h-full bg-cyan-400 transition-all duration-75" style={{ width: `${dynamicProgress}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-slate-300 text-[11px]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-amber-300">Biomechanical Parity:</span>
+                      <span>42 continuous rotation- and scale-invariant features extracted directly from 21 MediaPipe coordinates.</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono text-[10px]">
+                      Quality: {diag.qualityScore}/100
                     </span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
-                    <div
-                      className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full transition-all duration-150"
-                      style={{ width: `${Math.min(100, Math.max(0, diag.probA * 100))}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Kinematic Gate Checklist */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
-                  <div className={`flex items-center gap-1.5 ${diag.fistCurled ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <span>{diag.fistCurled ? '✓' : '✗'}</span>
-                    <span>4 Fingers Curled</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${diag.thumbElevated ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <span>{diag.thumbElevated ? '✓' : '✗'}</span>
-                    <span>Thumb Upright</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${diag.thumbLateral ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <span>{diag.thumbLateral ? '✓' : '✗'}</span>
-                    <span>Thumb Lateral</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${diag.thumbNotCrossing ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <span>{diag.thumbNotCrossing ? '✓' : '✗'}</span>
-                    <span>No Cross (≠S)</span>
-                  </div>
-                  <div className={`flex items-center gap-1.5 ${diag.thumbNotTucked ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <span>{diag.thumbNotTucked ? '✓' : '✗'}</span>
-                    <span>No Tuck (≠M/T)</span>
-                  </div>
-                </div>
+                )}
               </div>
             );
           })()}
