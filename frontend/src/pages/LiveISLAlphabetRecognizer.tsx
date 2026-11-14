@@ -27,7 +27,8 @@ import {
   Hand,
   Settings2,
   HelpCircle,
-  Download
+  Download,
+  Database
 } from 'lucide-react';
 import { webMediaPipe } from '../services/webMediaPipeService';
 import {
@@ -43,6 +44,7 @@ import { HAND_CONNECTIONS } from '../services/cameraLandmarkDetector';
 import { TrackingBenchmarkLab, ComparativeBenchmarkResult } from '../services/trackingBenchmarkLab';
 import { titanInferenceEngine, TitanInferenceResult } from '../services/titanInferenceEngine';
 import { titanASLInferenceEngine, TitanASLResult } from '../services/titanASLInferenceEngine';
+import { ZeroLeakDataCollector } from '../components/ZeroLeakDataCollector';
 
 // Comprehensive reference guide for supported alphabet signs
 const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string; category: 'single' | 'dual' | 'dynamic' }> = {
@@ -139,6 +141,10 @@ export function LiveISLAlphabetRecognizer() {
   const [selectedASLReferenceLetter, setSelectedASLReferenceLetter] = useState<string>('A');
   const [titanASLResult, setTitanASLResult] = useState<TitanASLResult | null>(null);
   const [showFullASLChartModal, setShowFullASLChartModal] = useState<boolean>(false);
+
+  // Zero-Leak Human Validation Studio
+  const [showZeroLeakCollector, setShowZeroLeakCollector] = useState<boolean>(false);
+  const liveLandmarksRef = useRef<LandmarkPoint[] | null>(null);
 
   // Convention Selection
   const [convention, setConvention] = useState<AlphabetConvention>('auto');
@@ -396,6 +402,7 @@ export function LiveISLAlphabetRecognizer() {
     const mpResult = webMediaPipe.detect(video, t0);
     const rawHands = (mpResult?.landmarks as LandmarkPoint[][]) || [];
     setTrackedHandCount(rawHands.length);
+    liveLandmarksRef.current = rawHands.length > 0 ? rawHands[0] : null;
 
     let result: InferenceResult = {
       sign: 'NEUTRAL',
@@ -719,6 +726,16 @@ export function LiveISLAlphabetRecognizer() {
 
           {/* Quick Header Actions */}
           <div className="flex items-center gap-2">
+            {/* Zero-Leak Human Validation Studio */}
+            <button
+              onClick={() => setShowZeroLeakCollector(true)}
+              className="px-3 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Open Zero-Leak Human Validation Studio"
+            >
+              <Database className="w-4 h-4 text-amber-400" />
+              <span className="hidden md:inline">Zero-Leak Studio</span>
+            </button>
+
             {/* Sign Language Guide Button */}
             <button
               onClick={() => setShowGuideModal(true)}
@@ -1704,6 +1721,19 @@ export function LiveISLAlphabetRecognizer() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Zero-Leak Human Validation Collector Modal */}
+        {showZeroLeakCollector && (
+          <ZeroLeakDataCollector
+            isOpen={showZeroLeakCollector}
+            onClose={() => setShowZeroLeakCollector(false)}
+            currentLandmarks={liveLandmarksRef.current}
+            trackingQualityReport={trackingReport}
+            isCameraActive={isCameraActive}
+            currentFps={fps}
+            videoElement={videoRef.current}
+          />
         )}
       </main>
 
