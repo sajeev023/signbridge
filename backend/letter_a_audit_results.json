@@ -1,0 +1,106 @@
+{
+  "dataset_provenance": {
+    "multisigner_samples": 4000,
+    "participants": {
+      "Signer_1": {
+        "total": 1000,
+        "splits": [
+          "train"
+        ]
+      },
+      "Signer_2": {
+        "total": 1000,
+        "splits": [
+          "train"
+        ]
+      },
+      "Signer_3": {
+        "total": 1000,
+        "splits": [
+          "val"
+        ]
+      },
+      "Signer_4": {
+        "total": 1000,
+        "splits": [
+          "test"
+        ]
+      }
+    },
+    "benchmark_records": 42,
+    "benchmark_signers": {
+      "Signer_1": 8,
+      "Signer_2": 7,
+      "Signer_3": 9,
+      "Signer_4": 6,
+      "Signer_5": 6,
+      "Signer_6": 6
+    }
+  },
+  "leakage_metrics": {
+    "min_train_val_dist": 0.12383202463388443,
+    "min_train_test_dist": 0.13040684163570404,
+    "min_train_bm_dist": 1.56718909740448,
+    "has_exact_leakage": false
+  },
+  "reproduced_metrics": {
+    "validation_signer_3": {
+      "tp": 40,
+      "fp": 0,
+      "tn": 960,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "accuracy": 1.0
+    },
+    "test_signer_4": {
+      "tp": 40,
+      "fp": 0,
+      "tn": 960,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "accuracy": 1.0
+    },
+    "real_human_benchmark": {
+      "tp": 3,
+      "fp": 0,
+      "tn": 39,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "fnr": 0.0,
+      "accuracy": 1.0
+    }
+  },
+  "statistical_confidence_intervals_95": {
+    "real_human_recall_clopper_pearson": [
+      0.29240177382128674,
+      1.0
+    ],
+    "real_human_recall_wilson": [
+      0.4385039693523135,
+      0.9999999999999999
+    ],
+    "real_human_specificity_clopper_pearson": [
+      0.9097488990396657,
+      1.0
+    ],
+    "test_set_recall_clopper_pearson": [
+      0.9119026971211976,
+      1.0
+    ],
+    "test_set_specificity_clopper_pearson": [
+      0.9961647905092879,
+      1.0
+    ]
+  }
+}
