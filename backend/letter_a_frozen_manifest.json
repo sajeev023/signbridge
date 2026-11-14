@@ -1,0 +1,30 @@
+{
+  "backend/saved_models/letter_a_specialist_model.json": {
+    "sha256": "dc7cd03a4ed647a7ec570422ed54d130bbb250d6cded42b93466ef6e967d14cf",
+    "size_bytes": 65980
+  },
+  "backend/train_letter_a_specialist.py": {
+    "sha256": "29347b5565d9f79882865a36cb0c7f612a1c88b27c759275e976a496e8946377",
+    "size_bytes": 16558
+  },
+  "backend/alphabet_feature_extractor.py": {
+    "sha256": "a6e0a483df4291b8633731afd79f12546fa923e6b5d172e3bf32edf1ce4c4c72",
+    "size_bytes": 8752
+  },
+  "frontend/src/services/alphabetInferenceEngine.ts": {
+    "sha256": "2e34e9bb39dbe50afe1f0e651df9ef994ca4844412ab6b662d0818c9e58b8930",
+    "size_bytes": 21906
+  },
+  "backend/data/alphabet_dataset_multisigner.json": {
+    "sha256": "0cfb68c66f5b752ead02f66e5d6e5e7b671d36dc11660126bc1d019010cc7ade",
+    "size_bytes": 17343481
+  },
+  "backend/titan/datasets/asl_alphabet/metadata/dataset_manifest.json": {
+    "sha256": "3fc93a0f0a514b936a3123671d3ea6469166b48cf773b4b4bdcb5b948f15c13a",
+    "size_bytes": 1103
+  },
+  "backend/titan/datasets/asl_alphabet/metadata/real_human_benchmark.json": {
+    "sha256": "997434c7eea07f35c356eefdcd85f7a165a8f200fe7a074062cf7e0ebcc0c2ef",
+    "size_bytes": 164181
+  }
+}
