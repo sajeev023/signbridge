@@ -11,7 +11,7 @@
 
 ## 1. COMPREHENSIVE DATASET MANIFEST
 
-The SIGNBRIDGE TITAN ASL research dataset comprises **4,642 total evaluation and training records** structured under [backend/titan/datasets/asl_alphabet/](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/titan/datasets/asl_alphabet/):
+The SIGNBRIDGE TITAN ASL research dataset comprises **4,642 total evaluation and training records** structured under [backend/titan/datasets/asl_alphabet/](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/titan/datasets/asl_alphabet/):
 
 | Dataset Partition / Source | Sample Count | Signer Cohort | Class Coverage | Modality & Feature Format |
 | :--- | :---: | :---: | :---: | :--- |
