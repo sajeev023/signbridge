@@ -9,10 +9,15 @@ Provides automated pytest assertions for:
 6. Python / TypeScript feature extraction parity
 """
 
+import sys
 import json
 from pathlib import Path
 import numpy as np
 import pytest
+
+WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(WORKSPACE_ROOT))
+sys.path.insert(0, str(WORKSPACE_ROOT / "backend"))
 
 from backend.tests.virtual_alphabet.virtual_hand_generator import (
     VirtualHandGenerator,
@@ -24,8 +29,6 @@ from backend.tests.virtual_alphabet.run_virtual_evaluations import (
     load_all_models,
     evaluate_sample_full_pipeline
 )
-
-WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 @pytest.fixture(scope="module")
