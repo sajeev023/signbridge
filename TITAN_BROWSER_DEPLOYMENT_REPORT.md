@@ -17,7 +17,7 @@ Deploying deep neural architectures to client browsers often introduces fatal en
 - Asynchronous GPU buffer readback stalling the main thread.
 
 ### 1.1 The TITAN Client Solution
-TITAN Architecture A (Spatial GNN) is compiled to a **zero-dependency JSON weight structure** and executed via [titanInferenceEngine.ts](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/frontend/src/services/titanInferenceEngine.ts):
+TITAN Architecture A (Spatial GNN) is compiled to a **zero-dependency JSON weight structure** and executed via [titanInferenceEngine.ts](file:///c:/Users/LFDC/Downloads/signbridge-main/frontend/src/services/titanInferenceEngine.ts):
 - **Dependencies**: 0 external runtime dependencies (no ONNX runtime, no PyTorch, no TF.js).
 - **Execution Target**: Pure TypeScript compiled directly into the existing Vite production bundle.
 - **Bundle Footprint**: Adds $841\ \text{KB}$ uncompressed ($124\ \text{KB}$ gzip) to frontend assets.

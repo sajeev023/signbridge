@@ -14,9 +14,9 @@
 
 The browser inference engine was evaluated in Chromium V8 and WebKit browser environments across 1,000 consecutive camera inference cycles:
 
-- **Client Runtime:** Pure TypeScript engine ([titanASLInferenceEngine.ts](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/frontend/src/services/titanASLInferenceEngine.ts)).
+- **Client Runtime:** Pure TypeScript engine ([titanASLInferenceEngine.ts](file:///c:/Users/LFDC/Downloads/signbridge-main/frontend/src/services/titanASLInferenceEngine.ts)).
 - **External Dependencies:** **Zero.** Operates without ONNX Runtime Web ($+14\ \text{MB}$ bundle overhead) or TensorFlow.js ($+1.8\ \text{MB}$ bundle overhead).
-- **Model Storage:** Direct JSON parameter serialization ([titan_asl_spatial_model.json](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/frontend/src/services/titan_asl_spatial_model.json)).
+- **Model Storage:** Direct JSON parameter serialization ([titan_asl_spatial_model.json](file:///c:/Users/LFDC/Downloads/signbridge-main/frontend/src/services/titan_asl_spatial_model.json)).
 - **Execution Target:** Single-threaded JavaScript CPU execution with zero WebGL overhead.
 
 ---
