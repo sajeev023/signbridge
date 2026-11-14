@@ -1,0 +1,603 @@
+{
+  "held_out_test_cohort": {
+    "signers": [
+      "Signer_3",
+      "Signer_4",
+      "Signer_5",
+      "Signer_6"
+    ],
+    "baseline_model": {
+      "total_samples": 27,
+      "correct": 15,
+      "raw_accuracy": 0.5555555555555556,
+      "accuracy_ci95": [
+        0.3731305826047035,
+        0.7241411300187954
+      ],
+      "macro_recall": 0.5777777777777778,
+      "macro_precision": 0.5555555555555556,
+      "macro_f1": 0.5664488017429194,
+      "ece": 0.18765856160057914,
+      "brier_score": 0.474208265542984,
+      "rejection_rate": 0.7777777777777778,
+      "coverage": 0.2222222222222222,
+      "accepted_precision": 1.0,
+      "accepted_precision_ci95": [
+        0.6096666796821562,
+        1.0
+      ],
+      "selective_risk": 0.0,
+      "signer_results": {
+        "Signer_3": {
+          "total": 9,
+          "correct": 6,
+          "accuracy": 0.6666666666666666
+        },
+        "Signer_4": {
+          "total": 6,
+          "correct": 3,
+          "accuracy": 0.5
+        },
+        "Signer_5": {
+          "total": 6,
+          "correct": 3,
+          "accuracy": 0.5
+        },
+        "Signer_6": {
+          "total": 6,
+          "correct": 3,
+          "accuracy": 0.5
+        }
+      },
+      "per_class": {
+        "A": {
+          "recall": 1.0,
+          "precision": 0.3333333333333333,
+          "f1": 0.5,
+          "support": 2
+        },
+        "B": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "C": {
+          "recall": 0.2,
+          "precision": 1.0,
+          "f1": 0.33333333333333337,
+          "support": 10
+        },
+        "D": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "L": {
+          "recall": 1.0,
+          "precision": 0.6666666666666666,
+          "f1": 0.8,
+          "support": 2
+        },
+        "O": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "f1": 0.0,
+          "support": 2
+        },
+        "R": {
+          "recall": 0.0,
+          "precision": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "V": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "Y": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 6
+        }
+      },
+      "confusion_matrix": {
+        "C": {
+          "A": 2,
+          "C": 2,
+          "NEUTRAL": 6
+        },
+        "D": {
+          "L": 1
+        },
+        "L": {
+          "L": 2
+        },
+        "O": {
+          "A": 2
+        },
+        "V": {
+          "V": 2
+        },
+        "Y": {
+          "Y": 6
+        },
+        "A": {
+          "A": 2
+        },
+        "R": {
+          "U": 1
+        },
+        "B": {
+          "B": 1
+        }
+      },
+      "risk_coverage_curve": [
+        {
+          "threshold": 0.0,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.5556,
+          "selective_risk": 0.4444
+        },
+        {
+          "threshold": 0.1,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.5556,
+          "selective_risk": 0.4444
+        },
+        {
+          "threshold": 0.2,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.5556,
+          "selective_risk": 0.4444
+        },
+        {
+          "threshold": 0.3,
+          "coverage": 0.9259,
+          "accepted_count": 25,
+          "precision": 0.6,
+          "selective_risk": 0.4
+        },
+        {
+          "threshold": 0.4,
+          "coverage": 0.6296,
+          "accepted_count": 17,
+          "precision": 0.7647,
+          "selective_risk": 0.2353
+        },
+        {
+          "threshold": 0.5,
+          "coverage": 0.3704,
+          "accepted_count": 10,
+          "precision": 0.9,
+          "selective_risk": 0.1
+        },
+        {
+          "threshold": 0.6,
+          "coverage": 0.3333,
+          "accepted_count": 9,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.7,
+          "coverage": 0.2222,
+          "accepted_count": 6,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.8,
+          "coverage": 0.0,
+          "accepted_count": 0,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.9,
+          "coverage": 0.0,
+          "accepted_count": 0,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        }
+      ]
+    },
+    "frozen_ak_gcn_model": {
+      "total_samples": 27,
+      "correct": 20,
+      "raw_accuracy": 0.7407407407407407,
+      "accuracy_ci95": [
+        0.5532146841288129,
+        0.8682960705730157
+      ],
+      "macro_recall": 0.9222222222222223,
+      "macro_precision": 1.0,
+      "macro_f1": 0.9595375722543353,
+      "ece": 0.15025059050983852,
+      "brier_score": 0.32861343026161194,
+      "rejection_rate": 0.5185185185185186,
+      "coverage": 0.48148148148148145,
+      "accepted_precision": 0.7692307692307693,
+      "accepted_precision_ci95": [
+        0.49743679154605736,
+        0.9182045472754861
+      ],
+      "selective_risk": 0.23076923076923073,
+      "signer_results": {
+        "Signer_3": {
+          "total": 9,
+          "correct": 9,
+          "accuracy": 1.0
+        },
+        "Signer_4": {
+          "total": 6,
+          "correct": 6,
+          "accuracy": 1.0
+        },
+        "Signer_5": {
+          "total": 6,
+          "correct": 2,
+          "accuracy": 0.3333333333333333
+        },
+        "Signer_6": {
+          "total": 6,
+          "correct": 3,
+          "accuracy": 0.5
+        }
+      },
+      "per_class": {
+        "A": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "B": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "C": {
+          "recall": 0.3,
+          "precision": 1.0,
+          "f1": 0.4615384615384615,
+          "support": 10
+        },
+        "D": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "L": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "O": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "R": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "V": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "Y": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 6
+        }
+      },
+      "confusion_matrix": {
+        "C": {
+          "C": 3,
+          "NEUTRAL": 7
+        },
+        "D": {
+          "D": 1
+        },
+        "L": {
+          "L": 2
+        },
+        "O": {
+          "O": 2
+        },
+        "V": {
+          "V": 2
+        },
+        "Y": {
+          "Y": 6
+        },
+        "A": {
+          "A": 2
+        },
+        "R": {
+          "R": 1
+        },
+        "B": {
+          "B": 1
+        }
+      },
+      "risk_coverage_curve": [
+        {
+          "threshold": 0.0,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.7407,
+          "selective_risk": 0.2593
+        },
+        {
+          "threshold": 0.1,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.7407,
+          "selective_risk": 0.2593
+        },
+        {
+          "threshold": 0.2,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.7407,
+          "selective_risk": 0.2593
+        },
+        {
+          "threshold": 0.3,
+          "coverage": 1.0,
+          "accepted_count": 27,
+          "precision": 0.7407,
+          "selective_risk": 0.2593
+        },
+        {
+          "threshold": 0.4,
+          "coverage": 0.8889,
+          "accepted_count": 24,
+          "precision": 0.7083,
+          "selective_risk": 0.2917
+        },
+        {
+          "threshold": 0.5,
+          "coverage": 0.7037,
+          "accepted_count": 19,
+          "precision": 0.7895,
+          "selective_risk": 0.2105
+        },
+        {
+          "threshold": 0.6,
+          "coverage": 0.5185,
+          "accepted_count": 14,
+          "precision": 0.8571,
+          "selective_risk": 0.1429
+        },
+        {
+          "threshold": 0.7,
+          "coverage": 0.3704,
+          "accepted_count": 10,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.8,
+          "coverage": 0.3333,
+          "accepted_count": 9,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.9,
+          "coverage": 0.2222,
+          "accepted_count": 6,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        }
+      ]
+    }
+  },
+  "familiar_train_cohort": {
+    "signers": [
+      "Signer_1",
+      "Signer_2"
+    ],
+    "frozen_ak_gcn_model": {
+      "total_samples": 15,
+      "correct": 15,
+      "raw_accuracy": 1.0,
+      "accuracy_ci95": [
+        0.7961173589253616,
+        1.0
+      ],
+      "macro_recall": 1.0,
+      "macro_precision": 1.0,
+      "macro_f1": 1.0,
+      "ece": 0.2378122866153717,
+      "brier_score": 0.12514685094356537,
+      "rejection_rate": 0.4,
+      "coverage": 0.6,
+      "accepted_precision": 1.0,
+      "accepted_precision_ci95": [
+        0.7008558040328856,
+        1.0
+      ],
+      "selective_risk": 0.0,
+      "signer_results": {
+        "Signer_1": {
+          "total": 8,
+          "correct": 8,
+          "accuracy": 1.0
+        },
+        "Signer_2": {
+          "total": 7,
+          "correct": 7,
+          "accuracy": 1.0
+        }
+      },
+      "per_class": {
+        "A": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "B": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "E": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "F": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "L": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 7
+        },
+        "R": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "U": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "V": {
+          "recall": 1.0,
+          "precision": 1.0,
+          "f1": 1.0,
+          "support": 2
+        }
+      },
+      "confusion_matrix": {
+        "A": {
+          "A": 1
+        },
+        "B": {
+          "B": 1
+        },
+        "E": {
+          "E": 1
+        },
+        "F": {
+          "F": 1
+        },
+        "R": {
+          "R": 1
+        },
+        "U": {
+          "U": 1
+        },
+        "L": {
+          "L": 7
+        },
+        "V": {
+          "V": 2
+        }
+      },
+      "risk_coverage_curve": [
+        {
+          "threshold": 0.0,
+          "coverage": 1.0,
+          "accepted_count": 15,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.1,
+          "coverage": 1.0,
+          "accepted_count": 15,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.2,
+          "coverage": 1.0,
+          "accepted_count": 15,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.3,
+          "coverage": 1.0,
+          "accepted_count": 15,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.4,
+          "coverage": 0.9333,
+          "accepted_count": 14,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.5,
+          "coverage": 0.8667,
+          "accepted_count": 13,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.6,
+          "coverage": 0.6667,
+          "accepted_count": 10,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.7,
+          "coverage": 0.6,
+          "accepted_count": 9,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.8,
+          "coverage": 0.6,
+          "accepted_count": 9,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        },
+        {
+          "threshold": 0.9,
+          "coverage": 0.4667,
+          "accepted_count": 7,
+          "precision": 1.0,
+          "selective_risk": 0.0
+        }
+      ]
+    }
+  }
+}
