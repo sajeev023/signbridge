@@ -21,7 +21,7 @@ The primary visual reference supplied for the ASL expansion is an authoritative 
 - **Panel Grid Structure:** 5 rows containing exactly 26 letter panels:
   - **Rows 1 to 4:** 5 columns each ($5 \times 4 = 20$ panels), cell width $\approx 152.4\ \text{px}$.
   - **Row 5:** 6 columns ($1 \times 6 = 6$ panels), cell width $\approx 127.0\ \text{px}$.
-- **Extracted Reference Crops:** Staged to [backend/titan/datasets/asl_alphabet/reference/crops/](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/titan/datasets/asl_alphabet/reference/crops/) and mirrored to client public assets.
+- **Extracted Reference Crops:** Staged to [backend/titan/datasets/asl_alphabet/reference/crops/](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/titan/datasets/asl_alphabet/reference/crops/) and mirrored to client public assets.
 
 ```
 +-------------------------------------------------------------------------+
