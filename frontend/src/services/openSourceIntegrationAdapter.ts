@@ -13,7 +13,7 @@ import { alphabetInferenceEngine, InferenceResult } from './alphabetInferenceEng
 export interface SmoothedInferenceResult extends InferenceResult {
   emittedSign: string | null;
   smoothedConfidence: number;
-  hysteresisStatus: 'EMITTED' | 'HOLDING' | 'UNSTABLE' | 'NEUTRAL' | 'LOW_CONFIDENCE' | 'ACCUMULATING';
+  hysteresisStatus: 'EMITTED' | 'HOLDING' | 'UNSTABLE' | 'NEUTRAL' | 'LOW_CONFIDENCE' | 'ACCUMULATING' | 'REJECTED';
   accumulatedSentence: string;
 }
 
@@ -66,7 +66,7 @@ export class NochnackHysteresisFilter {
   ): {
     emittedSign: string | null;
     smoothedConfidence: number;
-    status: 'EMITTED' | 'HOLDING' | 'UNSTABLE' | 'NEUTRAL' | 'LOW_CONFIDENCE' | 'ACCUMULATING';
+    status: 'EMITTED' | 'HOLDING' | 'UNSTABLE' | 'NEUTRAL' | 'LOW_CONFIDENCE' | 'ACCUMULATING' | 'REJECTED';
   } {
     this.predictionHistory.push(predictedSign);
     this.confidenceHistory.push(confidence);
@@ -84,7 +84,7 @@ export class NochnackHysteresisFilter {
       } else if (timestampMs - this.dropoutStartTime >= 500) {
         this.lastEmittedSign = null;
       }
-      return { emittedSign: null, smoothedConfidence: confidence, status: 'NEUTRAL' };
+      return { emittedSign: null, smoothedConfidence: confidence, status: 'REJECTED' };
     } else {
       this.dropoutStartTime = null;
     }
