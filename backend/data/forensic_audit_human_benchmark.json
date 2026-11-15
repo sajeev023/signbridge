@@ -1,0 +1,47 @@
+{
+  "total_records": 42,
+  "signers": {
+    "Signer_1": 8,
+    "Signer_2": 7,
+    "Signer_3": 9,
+    "Signer_4": 6,
+    "Signer_5": 6,
+    "Signer_6": 6
+  },
+  "classes": {
+    "A": 3,
+    "B": 2,
+    "C": 10,
+    "D": 1,
+    "E": 1,
+    "F": 1,
+    "L": 9,
+    "O": 2,
+    "R": 2,
+    "U": 1,
+    "V": 4,
+    "Y": 6
+  },
+  "represented_classes_count": 12,
+  "cohorts": {
+    "train": 15,
+    "test": 27
+  },
+  "missing_classes": [
+    "G",
+    "H",
+    "I",
+    "K",
+    "M",
+    "N",
+    "P",
+    "Q",
+    "S",
+    "T",
+    "W",
+    "X",
+    "J",
+    "Z"
+  ],
+  "provenance": "Genuine Physical Camera Landmark Captures (Zero-Leak)"
+}

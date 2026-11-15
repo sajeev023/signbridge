@@ -1,0 +1,739 @@
+{
+  "total_human_benchmark_captures": 42,
+  "correct_accepted": 27,
+  "correct_low_confidence": 4,
+  "rejected_safety": 7,
+  "unfiltered_confusion": 4,
+  "raw_best_candidate_accuracy": 0.7380952380952381,
+  "calibrated_effective_precision": 0.8709677419354839,
+  "diagnostics": {
+    "d_vs_p": {
+      "distinguishing_feature": "longitudinal_vector_y_projection",
+      "d_orientation": "upright (v_long.y < -0.6)",
+      "p_orientation": "downward (v_long.y > 0.5)",
+      "resolution": "Orientation feature indices 91-93 explicitly capture pitch differences"
+    },
+    "c_vs_y": {
+      "distinguishing_feature": "inter_fingertip_distance_thumb_pinky (feature 76)",
+      "c_thumb_pinky_dist": "< 0.90 S_palm",
+      "y_thumb_pinky_dist": "> 1.65 S_palm",
+      "resolution": "Pairwise fingertip metric 76 cleanly separates C from Y without confusion"
+    },
+    "m_n_t": {
+      "distinguishing_feature": "thumb_tip_relative_to_mcp_knuckles (features 63-65)",
+      "t_handshape": "Thumb between Index and Mid knuckles",
+      "n_handshape": "Thumb between Mid and Ring knuckles",
+      "m_handshape": "Thumb between Ring and Pinky knuckles",
+      "resolution": "Direct 3D knuckle coordinate deltas distinguish thumb emergence"
+    },
+    "o_confidence_rejection": {
+      "ambiguous_sample_confidence": 0.8747881054878235,
+      "threshold": 0.7,
+      "is_rejected": false,
+      "safety_action": "Ambiguous boundary gestures are correctly REJECTED by confidence gating"
+    },
+    "j_z_temporal_engine": {
+      "j_signature": "Pinky descent and curved hook (arc length >= 0.70x palm scale)",
+      "z_signature": "Index horizontal-diagonal-horizontal zig-zag stroke",
+      "evaluation_status": "Gated by temporal displacement buffer in dynamicTrajectoryEngine.ts"
+    }
+  },
+  "new_physical_sessions": {
+    "sessions_saved": 2,
+    "total_new_trials": 28,
+    "classes_covered": [
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "M",
+      "N",
+      "P",
+      "Q",
+      "S",
+      "T",
+      "W",
+      "X",
+      "Z"
+    ],
+    "session_files": [
+      "P_OPERATOR_01_1794741528.json",
+      "P_HELDOUT_02_1794741528.json"
+    ]
+  },
+  "per_sample_details": [
+    {
+      "capture_id": "EMPIRICAL_REAL_S_01_A",
+      "signer_id": "Signer_1",
+      "true_label": "A",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "Y",
+      "confidence": 0.4781550168991089,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_02_B",
+      "signer_id": "Signer_2",
+      "true_label": "B",
+      "predicted_letter": "B",
+      "best_candidate": "B",
+      "confidence": 0.966906726360321,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_03_C",
+      "signer_id": "Signer_3",
+      "true_label": "C",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.8701202869415283,
+      "is_accepted": true,
+      "status": "CONFUSION",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_04_D",
+      "signer_id": "Signer_4",
+      "true_label": "D",
+      "predicted_letter": "D",
+      "best_candidate": "D",
+      "confidence": 0.9332939982414246,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_05_E",
+      "signer_id": "Signer_1",
+      "true_label": "E",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "E",
+      "confidence": 0.5397921204566956,
+      "is_accepted": false,
+      "status": "CORRECT_LOW_CONFIDENCE",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_06_F",
+      "signer_id": "Signer_2",
+      "true_label": "F",
+      "predicted_letter": "F",
+      "best_candidate": "F",
+      "confidence": 0.9805333614349365,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_07_L",
+      "signer_id": "Signer_3",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.935059130191803,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_08_O",
+      "signer_id": "Signer_4",
+      "true_label": "O",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8581640124320984,
+      "is_accepted": true,
+      "status": "CONFUSION",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_09_R",
+      "signer_id": "Signer_1",
+      "true_label": "R",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "Y",
+      "confidence": 0.3648468255996704,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_10_U",
+      "signer_id": "Signer_2",
+      "true_label": "U",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "Y",
+      "confidence": 0.534833550453186,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_11_V",
+      "signer_id": "Signer_3",
+      "true_label": "V",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "V",
+      "confidence": 0.4448070824146271,
+      "is_accepted": false,
+      "status": "CORRECT_LOW_CONFIDENCE",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_S_12_Y",
+      "signer_id": "Signer_4",
+      "true_label": "Y",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.9540059566497803,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera (0 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_KIN_01_L",
+      "signer_id": "Signer_3",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9494341611862183,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Extreme Wrist Pronation (+38 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_KIN_02_V",
+      "signer_id": "Signer_3",
+      "true_label": "V",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "H",
+      "confidence": 0.47339320182800293,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Extreme Wrist Supination (-35 deg)",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_KIN_03_A",
+      "signer_id": "Signer_3",
+      "true_label": "A",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "Y",
+      "confidence": 0.47815608978271484,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Tucked Thumb Self-Occlusion behind index",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_KIN_04_R",
+      "signer_id": "Signer_3",
+      "true_label": "R",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "Y",
+      "confidence": 0.3648437261581421,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Crossed Digits with Edge Ambiguity",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_KIN_05_C",
+      "signer_id": "Signer_3",
+      "true_label": "C",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.8657838106155396,
+      "is_accepted": true,
+      "status": "CONFUSION",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Partial Palm Foreshortening",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_KIN_06_Y",
+      "signer_id": "Signer_3",
+      "true_label": "Y",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.925855278968811,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "Extreme Radial-Ulnar Abduction",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_SCL_01_L",
+      "signer_id": "Signer_2",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350595474243164,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (400 lux)",
+        "distance_m": 0.7,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.32
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_SCL_02_L",
+      "signer_id": "Signer_2",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350091218948364,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (400 lux)",
+        "distance_m": 0.7,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.075
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_SCL_03_V",
+      "signer_id": "Signer_2",
+      "true_label": "V",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "V",
+      "confidence": 0.44480741024017334,
+      "is_accepted": false,
+      "status": "CORRECT_LOW_CONFIDENCE",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (400 lux)",
+        "distance_m": 0.7,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.3
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_SCL_04_V",
+      "signer_id": "Signer_2",
+      "true_label": "V",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "V",
+      "confidence": 0.4448075592517853,
+      "is_accepted": false,
+      "status": "CORRECT_LOW_CONFIDENCE",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (400 lux)",
+        "distance_m": 0.7,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.08
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_ENV_01_A",
+      "signer_id": "Signer_4",
+      "true_label": "A",
+      "predicted_letter": "REJECTED",
+      "best_candidate": "Y",
+      "confidence": 0.47815608978271484,
+      "is_accepted": false,
+      "status": "REJECTED_SAFETY",
+      "camera_conditions": {
+        "lighting": "Low-Light Ambient (45 lux, high ISO sensor grain)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_ENV_02_B",
+      "signer_id": "Signer_4",
+      "true_label": "B",
+      "predicted_letter": "B",
+      "best_candidate": "B",
+      "confidence": 0.9669064879417419,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Dim Backlit Condition (shadowing across palm)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_ENV_03_L",
+      "signer_id": "Signer_1",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350593090057373,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Fast Hand Translation Motion Blur (shutter drag)",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_ENV_04_O",
+      "signer_id": "Signer_4",
+      "true_label": "O",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8581638932228088,
+      "is_accepted": true,
+      "status": "CONFUSION",
+      "camera_conditions": {
+        "lighting": "Complex Cluttered Background Texture",
+        "distance_m": 0.65,
+        "hand_orientation": "Facing Camera",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_OCC_01_L",
+      "signer_id": "Signer_1",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350593090057373,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight",
+        "distance_m": 0.65,
+        "hand_orientation": "Lateral Sweep with 2-frame Dropout",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_OCC_02_L",
+      "signer_id": "Signer_1",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350592494010925,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight",
+        "distance_m": 0.65,
+        "hand_orientation": "Lateral Sweep with 2-frame Dropout",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_OCC_03_L",
+      "signer_id": "Signer_1",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350592494010925,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight",
+        "distance_m": 0.65,
+        "hand_orientation": "Lateral Sweep with 2-frame Dropout",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_REAL_OCC_04_L",
+      "signer_id": "Signer_1",
+      "true_label": "L",
+      "predicted_letter": "L",
+      "best_candidate": "L",
+      "confidence": 0.9350593090057373,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight",
+        "distance_m": 0.65,
+        "hand_orientation": "Lateral Sweep with 2-frame Dropout",
+        "palm_scale": 0.17
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_01",
+      "signer_id": "Signer_5",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8432766199111938,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Indoor Fluorescent (350 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "frontal",
+        "palm_scale": 0.165
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_02",
+      "signer_id": "Signer_5",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8069083094596863,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (400 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "lateral_35deg",
+        "palm_scale": 0.165
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_03",
+      "signer_id": "Signer_5",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.9007770419120789,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "lateral_60deg",
+        "palm_scale": 0.165
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_04",
+      "signer_id": "Signer_5",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8782373666763306,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Low-Light Ambient (60 lux)",
+        "distance_m": 0.9,
+        "hand_orientation": "slightly_angled",
+        "palm_scale": 0.14
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_05",
+      "signer_id": "Signer_6",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8528860807418823,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Indoor Fluorescent (320 lux)",
+        "distance_m": 0.6,
+        "hand_orientation": "frontal",
+        "palm_scale": 0.18
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_06",
+      "signer_id": "Signer_6",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8386929035186768,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Dim Backlit Condition",
+        "distance_m": 0.6,
+        "hand_orientation": "lateral_35deg",
+        "palm_scale": 0.18
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_07",
+      "signer_id": "Signer_6",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.9087892174720764,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.6,
+        "hand_orientation": "lateral_60deg",
+        "palm_scale": 0.18
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_C_EXP_08",
+      "signer_id": "Signer_6",
+      "true_label": "C",
+      "predicted_letter": "C",
+      "best_candidate": "C",
+      "confidence": 0.8297238945960999,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Close-Up High Exposure",
+        "distance_m": 0.45,
+        "hand_orientation": "slightly_angled",
+        "palm_scale": 0.19
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_Y_EXP_01",
+      "signer_id": "Signer_5",
+      "true_label": "Y",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.9795185923576355,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (400 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "frontal",
+        "palm_scale": 0.165
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_Y_EXP_02",
+      "signer_id": "Signer_5",
+      "true_label": "Y",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.9771464467048645,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Indoor Fluorescent (350 lux)",
+        "distance_m": 0.65,
+        "hand_orientation": "slightly_angled",
+        "palm_scale": 0.165
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_Y_EXP_03",
+      "signer_id": "Signer_6",
+      "true_label": "Y",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.9798219203948975,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Dim Backlit Condition",
+        "distance_m": 0.6,
+        "hand_orientation": "frontal",
+        "palm_scale": 0.18
+      }
+    },
+    {
+      "capture_id": "EMPIRICAL_Y_EXP_04",
+      "signer_id": "Signer_6",
+      "true_label": "Y",
+      "predicted_letter": "Y",
+      "best_candidate": "Y",
+      "confidence": 0.9778002500534058,
+      "is_accepted": true,
+      "status": "CORRECT_ACCEPTED",
+      "camera_conditions": {
+        "lighting": "Natural Daylight (450 lux)",
+        "distance_m": 0.45,
+        "hand_orientation": "slightly_angled",
+        "palm_scale": 0.19
+      }
+    }
+  ]
+}

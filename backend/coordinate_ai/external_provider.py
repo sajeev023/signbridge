@@ -110,7 +110,7 @@ class NvidiaNimProvider(BaseAIProvider):
         self.api_key = api_key or os.getenv("AI_API_KEY", "")
         self.base_url = base_url or os.getenv("AI_BASE_URL", "https://integrate.api.nvidia.com/v1")
         self.model_name = model_name or os.getenv("AI_MODEL", "meta/llama-3.2-11b-vision-instruct")
-        self.timeout_sec = max(0.5, timeout_ms / 1000.0)
+        self.timeout_sec = max(0.05, timeout_ms / 1000.0)
         self.provider_name = "nvidia_nim"
 
         # Telemetry
