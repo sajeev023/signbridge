@@ -28,6 +28,7 @@ export class NochnackHysteresisFilter {
   private lastEmittedSign: string | null = null;
   private lastEmittedTime = 0;
   private consecutiveNeutralCount = 0;
+  private dropoutStartTime: number | null = null;
   private sentence: string[] = [];
 
   constructor(
@@ -48,6 +49,7 @@ export class NochnackHysteresisFilter {
     this.lastEmittedSign = null;
     this.lastEmittedTime = 0;
     this.consecutiveNeutralCount = 0;
+    this.dropoutStartTime = null;
   }
 
   public clearSentence(): void {
@@ -71,15 +73,28 @@ export class NochnackHysteresisFilter {
       this.confidenceHistory.shift();
     }
 
-    if (predictedSign === 'NEUTRAL' || predictedSign === 'REJECTED') {
-      this.consecutiveNeutralCount += 1;
-      if (this.consecutiveNeutralCount >= 2) {
+    // Handle tracking dropout (REJECTED) vs confirmed intentional resting (NEUTRAL)
+    if (predictedSign === 'REJECTED') {
+      this.consecutiveNeutralCount = 0;
+      if (this.dropoutStartTime === null) {
+        this.dropoutStartTime = timestampMs;
+      } else if (timestampMs - this.dropoutStartTime >= 500) {
         this.lastEmittedSign = null;
       }
       return { emittedSign: null, smoothedConfidence: confidence, status: 'NEUTRAL' };
+    } else {
+      this.dropoutStartTime = null;
     }
 
-    this.consecutiveNeutralCount = 0;
+    if (predictedSign === 'NEUTRAL') {
+      this.consecutiveNeutralCount += 1;
+      if (this.consecutiveNeutralCount >= 3) {
+        this.lastEmittedSign = null;
+      }
+      return { emittedSign: null, smoothedConfidence: confidence, status: 'NEUTRAL' };
+    } else {
+      this.consecutiveNeutralCount = 0;
+    }
 
     if (this.predictionHistory.length < this.agreementThreshold) {
       return { emittedSign: null, smoothedConfidence: confidence, status: 'ACCUMULATING' };

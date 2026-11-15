@@ -168,3 +168,33 @@ def test_hysteresis_legitimate_transition_and_neutral_release():
         filter_inst.process_frame("B", 0.95, timestamp_ms=t)
     assert filter_inst.get_accumulated_sentence() == "ABB"
 
+
+def test_hysteresis_tracking_dropout_does_not_cause_false_reemission():
+    """
+    Verifies that brief tracking dropouts (e.g. 2 frames of REJECTED) do NOT reset
+    the debounce lock, preventing duplicate letter emission when the hand is re-acquired.
+    """
+    filter_inst = NochnackTemporalHysteresisFilter(
+        window_size=10,
+        agreement_threshold=7,
+        confidence_threshold=0.72,
+        debounce_ms=800.0
+    )
+
+    # 1. Emit Letter B
+    for t in range(0, 240, 30):
+        filter_inst.process_frame("B", 0.95, timestamp_ms=t)
+    assert filter_inst.get_accumulated_sentence() == "B"
+
+    # 2. Brief tracking interruption: 2 dropped frames (60ms) of REJECTED
+    filter_inst.process_frame("REJECTED", 0.0, timestamp_ms=240)
+    filter_inst.process_frame("REJECTED", 0.0, timestamp_ms=270)
+
+    # 3. Hand reacquired holding the same Letter B
+    for t in range(300, 540, 30):
+        filter_inst.process_frame("B", 0.95, timestamp_ms=t)
+
+    # Must NOT emit a second 'B' because the hand was never dropped to NEUTRAL!
+    assert filter_inst.get_accumulated_sentence() == "B"
+
+

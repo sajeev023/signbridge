@@ -1,0 +1,256 @@
+{
+  "timestamp": "2026-11-15T05:08:00Z",
+  "dataset_source": "real_human_evaluation_dataset.json",
+  "total_physical_samples": 42,
+  "classes_represented_count": 12,
+  "missing_classes_count": 14,
+  "overall_accuracy_pct": 83.33333333333334,
+  "macro_f1": 0.8121693121693122,
+  "cohorts": {
+    "train": {
+      "signers": [
+        "Signer_1",
+        "Signer_2"
+      ],
+      "total": 15,
+      "correct": 14,
+      "accuracy_pct": 93.33333333333333
+    },
+    "held_out_test": {
+      "signers": [
+        "Signer_3",
+        "Signer_4",
+        "Signer_5",
+        "Signer_6"
+      ],
+      "total": 27,
+      "correct": 21,
+      "accuracy_pct": 77.77777777777779
+    }
+  },
+  "per_class_performance": {
+    "A": {
+      "total": 3,
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "mean_conf": 0.0
+    },
+    "B": {
+      "total": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9996373653411865
+    },
+    "C": {
+      "total": 10,
+      "tp": 8,
+      "fp": 0,
+      "fn": 2,
+      "precision": 1.0,
+      "recall": 0.8,
+      "f1": 0.888888888888889,
+      "mean_conf": 0.8683808982372284
+    },
+    "D": {
+      "total": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.999076247215271
+    },
+    "E": {
+      "total": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9813622832298279
+    },
+    "F": {
+      "total": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9999744892120361
+    },
+    "L": {
+      "total": 9,
+      "tp": 9,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9999938011169434
+    },
+    "O": {
+      "total": 2,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "mean_conf": 0.6792986989021301
+    },
+    "R": {
+      "total": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9943098425865173
+    },
+    "U": {
+      "total": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9406726956367493
+    },
+    "V": {
+      "total": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "mean_conf": 0.9959573596715927
+    },
+    "Y": {
+      "total": 6,
+      "tp": 6,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571428571428571,
+      "mean_conf": 0.9985690911610922
+    }
+  },
+  "participant_breakdown": {
+    "Signer_1": {
+      "total": 8,
+      "correct": 7,
+      "accuracy_pct": 87.5
+    },
+    "Signer_2": {
+      "total": 7,
+      "correct": 7,
+      "accuracy_pct": 100.0
+    },
+    "Signer_3": {
+      "total": 9,
+      "correct": 6,
+      "accuracy_pct": 66.66666666666666
+    },
+    "Signer_4": {
+      "total": 6,
+      "correct": 3,
+      "accuracy_pct": 50.0
+    },
+    "Signer_5": {
+      "total": 6,
+      "correct": 6,
+      "accuracy_pct": 100.0
+    },
+    "Signer_6": {
+      "total": 6,
+      "correct": 6,
+      "accuracy_pct": 100.0
+    }
+  },
+  "camera_conditions_breakdown": {
+    "Natural Daylight (450 lux)": {
+      "total": 21,
+      "correct": 16,
+      "accuracy_pct": 76.19047619047619
+    },
+    "Natural Daylight (400 lux)": {
+      "total": 6,
+      "correct": 6,
+      "accuracy_pct": 100.0
+    },
+    "Low-Light Ambient (45 lux, high ISO sensor grain)": {
+      "total": 1,
+      "correct": 0,
+      "accuracy_pct": 0.0
+    },
+    "Dim Backlit Condition (shadowing across palm)": {
+      "total": 1,
+      "correct": 1,
+      "accuracy_pct": 100.0
+    },
+    "Fast Hand Translation Motion Blur (shutter drag)": {
+      "total": 1,
+      "correct": 1,
+      "accuracy_pct": 100.0
+    },
+    "Complex Cluttered Background Texture": {
+      "total": 1,
+      "correct": 0,
+      "accuracy_pct": 0.0
+    },
+    "Natural Daylight": {
+      "total": 4,
+      "correct": 4,
+      "accuracy_pct": 100.0
+    },
+    "Indoor Fluorescent (350 lux)": {
+      "total": 2,
+      "correct": 2,
+      "accuracy_pct": 100.0
+    },
+    "Low-Light Ambient (60 lux)": {
+      "total": 1,
+      "correct": 1,
+      "accuracy_pct": 100.0
+    },
+    "Indoor Fluorescent (320 lux)": {
+      "total": 1,
+      "correct": 1,
+      "accuracy_pct": 100.0
+    },
+    "Dim Backlit Condition": {
+      "total": 2,
+      "correct": 2,
+      "accuracy_pct": 100.0
+    },
+    "Close-Up High Exposure": {
+      "total": 1,
+      "correct": 1,
+      "accuracy_pct": 100.0
+    }
+  },
+  "confusion_matrix": {
+    "C": {
+      "Y": 2
+    }
+  },
+  "error_taxonomy": {
+    "FALSE_REJECTION": 5,
+    "CONFUSION": 2
+  }
+}

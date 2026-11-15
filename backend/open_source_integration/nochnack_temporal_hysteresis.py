@@ -42,6 +42,7 @@ class NochnackTemporalHysteresisFilter:
         self.last_emitted_sign: Optional[str] = None
         self.last_emitted_time: float = 0.0
         self.consecutive_neutral_count: int = 0
+        self.dropout_start_time: Optional[float] = None
         self.sentence: List[str] = []
 
     def reset(self):
@@ -51,6 +52,7 @@ class NochnackTemporalHysteresisFilter:
         self.last_emitted_sign = None
         self.last_emitted_time = 0.0
         self.consecutive_neutral_count = 0
+        self.dropout_start_time = None
 
     def clear_sentence(self):
         self.sentence.clear()
@@ -69,21 +71,34 @@ class NochnackTemporalHysteresisFilter:
           - 'HOLDING': Sign confirmed but held steady (debounced from re-emitting).
           - 'UNSTABLE': Fluctuation across window (suppressed).
           - 'LOW_CONFIDENCE': Insufficient confidence (suppressed).
-          - 'NEUTRAL': Neutral resting pose or rejection.
+          - 'NEUTRAL': Neutral resting pose.
+          - 'REJECTED': Tracking loss / rejected frame.
         """
         self.prediction_history.append(predicted_sign)
         self.confidence_history.append(confidence)
         self.timestamp_history.append(timestamp_ms)
 
-        # 1. Handle explicit neutral or rejected states
-        if predicted_sign in ("NEUTRAL", "REJECTED"):
+        # 1. Handle tracking loss (REJECTED) vs confirmed intentional resting (NEUTRAL)
+        # Tracking loss (REJECTED) coasts across brief sensor glitches (<500ms) without resetting lock.
+        if predicted_sign == "REJECTED":
+            self.consecutive_neutral_count = 0
+            if self.dropout_start_time is None:
+                self.dropout_start_time = timestamp_ms
+            elif (timestamp_ms - self.dropout_start_time) >= 500.0:
+                # Prolonged loss of hand (>500ms) resets debounce lock
+                self.last_emitted_sign = None
+            return None, confidence, "REJECTED"
+        else:
+            self.dropout_start_time = None
+
+        # Intentional resting hand (NEUTRAL) requires >=3 consecutive frames (90ms) to reset lock
+        if predicted_sign == "NEUTRAL":
             self.consecutive_neutral_count += 1
-            if self.consecutive_neutral_count >= 2:
-                # Sustained neutral releases debounce lock so repeat letters can emit
+            if self.consecutive_neutral_count >= 3:
                 self.last_emitted_sign = None
             return None, confidence, "NEUTRAL"
-
-        self.consecutive_neutral_count = 0
+        else:
+            self.consecutive_neutral_count = 0
 
         # 2. Window sufficiency check
         if len(self.prediction_history) < self.agreement_threshold:
