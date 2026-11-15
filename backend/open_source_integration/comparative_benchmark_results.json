@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-11-15T03:39:18Z",
+  "duration_sec": 2.4630551000000196,
+  "static_feature_comparison": {
+    "kinivi_representation": {
+      "name": "Kinivi 2D Relative Normalization (42 coords, no z)",
+      "scores": {
+        "tilt_0deg_drift": 0.0,
+        "tilt_15deg_drift": 0.3449378212292989,
+        "tilt_30deg_drift": 0.7051885227362314,
+        "tilt_45deg_drift": 0.9756995116670927
+      }
+    },
+    "pianalytix_representation": {
+      "name": "Pianalytix Raw Flattened Coordinates (63 values)",
+      "scores": {
+        "tilt_0deg_drift": 0.0,
+        "tilt_15deg_drift": 0.05183252599090338,
+        "tilt_30deg_drift": 0.10277819633483887,
+        "tilt_45deg_drift": 0.15196528503050408
+      }
+    },
+    "signbridge_representation": {
+      "name": "SIGNBRIDGE 3D Orthonormal Canonical (42 features)",
+      "scores": {
+        "tilt_0deg_drift": 0.0,
+        "tilt_15deg_drift": 8.989396711456266e-07,
+        "tilt_30deg_drift": 4.0489998080299e-07,
+        "tilt_45deg_drift": 3.854238362540248e-07
+      }
+    }
+  },
+  "temporal_hysteresis_benchmark": {
+    "num_frames": 50,
+    "raw_prediction_flips": 9,
+    "raw_stability_percentage": 81.63265306122449,
+    "filtered_emissions_count": 20,
+    "filtered_dominant_sign": "B",
+    "spurious_flicker_suppression_rate": 100.0,
+    "accumulated_sentence": "BB"
+  },
+  "latency_metrics": {
+    "mean_latency_ms": 0.6693890000087777,
+    "p95_latency_ms": 0.7966199999600575,
+    "throughput_fps": 1493.8996607157976
+  }
+}
