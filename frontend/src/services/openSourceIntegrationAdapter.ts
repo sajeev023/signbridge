@@ -30,17 +30,20 @@ export class NochnackHysteresisFilter {
   private consecutiveNeutralCount = 0;
   private dropoutStartTime: number | null = null;
   private sentence: string[] = [];
+  private requireNeutralRelease: boolean;
 
   constructor(
     windowSize = 10,
     agreementThreshold = 7,
     confidenceThreshold = 0.72,
-    debounceMs = 800
+    debounceMs = 800,
+    requireNeutralRelease = false
   ) {
     this.windowSize = windowSize;
     this.agreementThreshold = Math.min(windowSize, agreementThreshold);
     this.confidenceThreshold = confidenceThreshold;
     this.debounceMs = debounceMs;
+    this.requireNeutralRelease = requireNeutralRelease;
   }
 
   public reset(): void {
@@ -117,9 +120,11 @@ export class NochnackHysteresisFilter {
     }
 
     // Debounce
-    const timeSinceLast = timestampMs - this.lastEmittedTime;
-    if (predictedSign === this.lastEmittedSign && timeSinceLast < this.debounceMs) {
-      return { emittedSign: predictedSign, smoothedConfidence: avgConfidence, status: 'HOLDING' };
+    if (predictedSign === this.lastEmittedSign) {
+      const timeSinceLast = timestampMs - this.lastEmittedTime;
+      if (this.requireNeutralRelease || timeSinceLast < this.debounceMs) {
+        return { emittedSign: predictedSign, smoothedConfidence: avgConfidence, status: 'HOLDING' };
+      }
     }
 
     // Emit

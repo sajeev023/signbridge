@@ -28,12 +28,14 @@ class NochnackTemporalHysteresisFilter:
         window_size: int = 10,
         agreement_threshold: int = 7,
         confidence_threshold: float = 0.72,
-        debounce_ms: float = 800.0
+        debounce_ms: float = 800.0,
+        require_neutral_release: bool = False
     ):
         self.window_size = window_size
         self.agreement_threshold = min(window_size, agreement_threshold)
         self.confidence_threshold = confidence_threshold
         self.debounce_ms = debounce_ms
+        self.require_neutral_release = require_neutral_release
 
         self.prediction_history: deque = deque(maxlen=window_size)
         self.confidence_history: deque = deque(maxlen=window_size)
@@ -121,9 +123,10 @@ class NochnackTemporalHysteresisFilter:
         verified_sign = unique_recent[0]
 
         # 5. Debounce check: Prevent character spamming while user holds pose
-        time_since_last = timestamp_ms - self.last_emitted_time
-        if verified_sign == self.last_emitted_sign and time_since_last < self.debounce_ms:
-            return verified_sign, avg_conf, "HOLDING"
+        if verified_sign == self.last_emitted_sign:
+            time_since_last = timestamp_ms - self.last_emitted_time
+            if self.require_neutral_release or time_since_last < self.debounce_ms:
+                return verified_sign, avg_conf, "HOLDING"
 
         # 6. Emit verified sign!
         self.last_emitted_sign = verified_sign
