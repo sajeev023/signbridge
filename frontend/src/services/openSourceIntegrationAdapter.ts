@@ -27,6 +27,7 @@ export class NochnackHysteresisFilter {
   private confidenceHistory: number[] = [];
   private lastEmittedSign: string | null = null;
   private lastEmittedTime = 0;
+  private consecutiveNeutralCount = 0;
   private sentence: string[] = [];
 
   constructor(
@@ -46,6 +47,7 @@ export class NochnackHysteresisFilter {
     this.confidenceHistory = [];
     this.lastEmittedSign = null;
     this.lastEmittedTime = 0;
+    this.consecutiveNeutralCount = 0;
   }
 
   public clearSentence(): void {
@@ -70,8 +72,14 @@ export class NochnackHysteresisFilter {
     }
 
     if (predictedSign === 'NEUTRAL' || predictedSign === 'REJECTED') {
+      this.consecutiveNeutralCount += 1;
+      if (this.consecutiveNeutralCount >= 2) {
+        this.lastEmittedSign = null;
+      }
       return { emittedSign: null, smoothedConfidence: confidence, status: 'NEUTRAL' };
     }
+
+    this.consecutiveNeutralCount = 0;
 
     if (this.predictionHistory.length < this.agreementThreshold) {
       return { emittedSign: null, smoothedConfidence: confidence, status: 'ACCUMULATING' };

@@ -132,3 +132,39 @@ def test_rotation_invariance_superiority_over_kinivi():
     f_sb_rot = extract_canonical_features(lms_rot)
     sb_drift = float(np.linalg.norm(f_sb_orig - f_sb_rot) / np.linalg.norm(f_sb_orig))
     assert sb_drift < 1e-4, f"Expected SIGNBRIDGE drift < 1e-4, got {sb_drift}"
+
+
+def test_hysteresis_legitimate_transition_and_neutral_release():
+    """
+    Verifies that:
+    1. Switching between different letters (A -> B) is not suppressed by debounce.
+    2. Returning to NEUTRAL for >= 2 frames resets the debounce lock, allowing intentional
+       repeated letters (e.g. 'A' then 'A') to be recognized cleanly.
+    """
+    filter_inst = NochnackTemporalHysteresisFilter(
+        window_size=10,
+        agreement_threshold=7,
+        confidence_threshold=0.72,
+        debounce_ms=800.0
+    )
+
+    # 1. Emit Letter A
+    for t in range(0, 240, 30):
+        filter_inst.process_frame("A", 0.95, timestamp_ms=t)
+    assert filter_inst.get_accumulated_sentence() == "A"
+
+    # 2. Transition directly to Letter B (different letter -> debounce must NOT suppress)
+    for t in range(240, 480, 30):
+        filter_inst.process_frame("B", 0.95, timestamp_ms=t)
+    assert filter_inst.get_accumulated_sentence() == "AB"
+
+    # 3. Drop hand to NEUTRAL for 3 frames (90ms)
+    for t in range(480, 570, 30):
+        filter_inst.process_frame("NEUTRAL", 0.0, timestamp_ms=t)
+
+    # 4. Sign B again at t=570ms (within 800ms of first B at t=420ms)
+    # Because neutral was confirmed, this is a legitimate new stroke!
+    for t in range(570, 810, 30):
+        filter_inst.process_frame("B", 0.95, timestamp_ms=t)
+    assert filter_inst.get_accumulated_sentence() == "ABB"
+

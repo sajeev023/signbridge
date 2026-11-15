@@ -41,6 +41,7 @@ class NochnackTemporalHysteresisFilter:
 
         self.last_emitted_sign: Optional[str] = None
         self.last_emitted_time: float = 0.0
+        self.consecutive_neutral_count: int = 0
         self.sentence: List[str] = []
 
     def reset(self):
@@ -49,6 +50,7 @@ class NochnackTemporalHysteresisFilter:
         self.timestamp_history.clear()
         self.last_emitted_sign = None
         self.last_emitted_time = 0.0
+        self.consecutive_neutral_count = 0
 
     def clear_sentence(self):
         self.sentence.clear()
@@ -75,7 +77,13 @@ class NochnackTemporalHysteresisFilter:
 
         # 1. Handle explicit neutral or rejected states
         if predicted_sign in ("NEUTRAL", "REJECTED"):
+            self.consecutive_neutral_count += 1
+            if self.consecutive_neutral_count >= 2:
+                # Sustained neutral releases debounce lock so repeat letters can emit
+                self.last_emitted_sign = None
             return None, confidence, "NEUTRAL"
+
+        self.consecutive_neutral_count = 0
 
         # 2. Window sufficiency check
         if len(self.prediction_history) < self.agreement_threshold:
