@@ -45,8 +45,11 @@ import { TrackingBenchmarkLab, ComparativeBenchmarkResult } from '../services/tr
 import { titanInferenceEngine, TitanInferenceResult } from '../services/titanInferenceEngine';
 import { titanASLInferenceEngine, TitanASLResult } from '../services/titanASLInferenceEngine';
 import { ZeroLeakDataCollector } from '../components/ZeroLeakDataCollector';
+import { coordinateAiEngine } from '../services/coordinateAiEngine';
 
 // Comprehensive reference guide for supported alphabet signs
+type RecognitionMode = AlphabetConvention | 'coordinate_ai';
+
 const ALPHABET_REFERENCE: Record<string, { desc: string; standard: string; category: 'single' | 'dual' | 'dynamic' }> = {
   A: { desc: 'Make a fist with fingers closed and thumb resting straight along the side of index finger.', standard: 'Unified', category: 'single' },
   B: { desc: 'Hold four fingers straight up together with thumb folded flat across palm.', standard: 'Unified', category: 'single' },
@@ -101,7 +104,11 @@ export interface AcceptanceTestRecord {
   distance: string;
 }
 
-export function LiveISLAlphabetRecognizer() {
+export interface LiveISLAlphabetRecognizerProps {
+  onNavigate?: (page: string) => void;
+}
+
+export function LiveISLAlphabetRecognizer({ onNavigate }: LiveISLAlphabetRecognizerProps = {}) {
   // Telemetry & Camera State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
@@ -147,7 +154,8 @@ export function LiveISLAlphabetRecognizer() {
   const liveLandmarksRef = useRef<LandmarkPoint[] | null>(null);
 
   // Convention Selection
-  const [convention, setConvention] = useState<AlphabetConvention>('auto');
+  const [convention, setConvention] = useState<RecognitionMode>('coordinate_ai');
+  const [coordinateCandidates, setCoordinateCandidates] = useState<Array<{ letter: string; confidence: number }>>([]);
 
   // Multi-Stage Tracking & Quality Telemetry
   const [trackingReport, setTrackingReport] = useState<TrackingQualityReport>({
@@ -430,14 +438,41 @@ export function LiveISLAlphabetRecognizer() {
     };
 
     if (rawHands.length > 0) {
-      result = alphabetInferenceEngine.predict(
-        rawHands,
-        mpResult?.handedness,
-        convention,
-        canvas.width,
-        canvas.height,
-        t0
-      );
+      if (convention !== 'islrtc_bimanual' && rawHands.length === 1) {
+        // Primary Production Engine: 94-D Biomechanical Coordinate AI MLP
+        const coordRes = coordinateAiEngine.recognizeHand(rawHands[0], t0);
+        setCoordinateCandidates(coordRes.topCandidates);
+        const legacyPredict = alphabetInferenceEngine.predict(
+          rawHands,
+          mpResult?.handedness,
+          convention === 'coordinate_ai' ? 'single_hand_chart' : convention,
+          canvas.width,
+          canvas.height,
+          t0
+        );
+        result = {
+          sign: coordRes.isAccepted ? coordRes.predictedLetter : 'NEUTRAL',
+          confidence: coordRes.confidence,
+          isDynamic: coordRes.isDynamic,
+          handCount: 1,
+          convention: 'Single-Hand (Chart)',
+          allProbabilities: coordRes.probabilities,
+          tracks: legacyPredict.tracks,
+          qualityReport: legacyPredict.qualityReport
+        };
+      } else {
+        setCoordinateCandidates([]);
+        result = alphabetInferenceEngine.predict(
+          rawHands,
+          mpResult?.handedness,
+          convention === 'coordinate_ai' ? 'single_hand_chart' : convention,
+          canvas.width,
+          canvas.height,
+          t0
+        );
+      }
+    } else {
+      setCoordinateCandidates([]);
     }
     setCurrentResult(result);
     setTrackingReport(result.qualityReport);
@@ -704,13 +739,17 @@ export function LiveISLAlphabetRecognizer() {
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+          <div 
+            onClick={() => onNavigate && onNavigate('landing')}
+            className={`flex items-center gap-3 ${onNavigate ? 'cursor-pointer group' : ''}`}
+            title={onNavigate ? 'Go to Home Dashboard' : undefined}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
               <Hand className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight text-white">SIGNBRIDGE</span>
+                <span className="font-bold text-base tracking-tight text-white group-hover:text-cyan-300 transition-colors">SIGNBRIDGE</span>
                 <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1.5 ${
                   isCameraActive 
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
@@ -720,7 +759,7 @@ export function LiveISLAlphabetRecognizer() {
                   {isCameraActive ? 'Live Camera' : 'Standby'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">Real-Time Indian Sign Language Recognition</p>
+              <p className="text-xs text-slate-400 hidden sm:block">Coordinate AI • 94-D Biomechanical Engine</p>
             </div>
           </div>
 
@@ -916,7 +955,7 @@ export function LiveISLAlphabetRecognizer() {
             <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur text-xs">
               <span className="text-slate-400 font-medium">Recognition Mode:</span>
               <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                {(['auto', 'single_hand_chart', 'islrtc_bimanual'] as AlphabetConvention[]).map((m) => (
+                {(['coordinate_ai', 'auto', 'single_hand_chart', 'islrtc_bimanual'] as RecognitionMode[]).map((m) => (
                   <button
                     key={m}
                     onClick={() => setConvention(m)}
@@ -926,7 +965,7 @@ export function LiveISLAlphabetRecognizer() {
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    {m === 'auto' ? 'Auto Detect' : m === 'single_hand_chart' ? '1-Hand' : '2-Hand (ISLRTC)'}
+                    {m === 'coordinate_ai' ? 'Coordinate AI (94-D)' : m === 'auto' ? 'Auto Detect' : m === 'single_hand_chart' ? '1-Hand Chart' : '2-Hand (ISLRTC)'}
                   </button>
                 ))}
               </div>
@@ -981,6 +1020,28 @@ export function LiveISLAlphabetRecognizer() {
                   </p>
                 </div>
               </div>
+
+              {/* Top Candidates Diagnostics */}
+              {coordinateCandidates && coordinateCandidates.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/60 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="font-semibold uppercase tracking-wider text-slate-500">Top Candidates</span>
+                    <span className="text-[10px] text-indigo-400 font-mono">Coordinate AI 94-D</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {coordinateCandidates.slice(0, 3).map((cand, idx) => (
+                      <div key={cand.letter} className={`p-2 rounded-xl border text-center transition-all ${
+                        idx === 0
+                          ? 'bg-indigo-950/40 border-indigo-500/40 text-indigo-200'
+                          : 'bg-slate-950/40 border-slate-800/60 text-slate-400'
+                      }`}>
+                        <div className="text-base font-bold">{cand.letter}</div>
+                        <div className="text-[10px] font-mono text-cyan-400">{Math.round(cand.confidence * 100)}%</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Auto-Accept Progress Bar */}
               <div className="space-y-1.5 pt-1">

@@ -85,10 +85,21 @@ class LocalCoordinateProvider(BaseAIProvider):
 
     def predict(self, request: CoordinateInferenceRequest) -> CoordinateInferenceResponse:
         t0 = time.perf_counter()
-        # Use enriched features if supplied, else raw coordinates
+        # Use enriched features if supplied, else compute from raw coordinates
         import numpy as np
-        if request.enriched_features_94:
+        if request.enriched_features_94 and len(request.enriched_features_94) == 94:
             feats = np.array(request.enriched_features_94, dtype=np.float32)
+        elif request.raw_coordinates_63 and len(request.raw_coordinates_63) == 63:
+            try:
+                try:
+                    from backend.coordinate_ai.feature_pipeline import extract_enriched_coordinate_features
+                except ImportError:
+                    from coordinate_ai.feature_pipeline import extract_enriched_coordinate_features
+                pts = np.array(request.raw_coordinates_63, dtype=np.float32).reshape(21, 3)
+                lm = [{"x": float(p[0]), "y": float(p[1]), "z": float(p[2])} for p in pts]
+                feats = extract_enriched_coordinate_features(lm)
+            except Exception:
+                feats = np.array(request.raw_coordinates_63, dtype=np.float32)
         else:
             feats = np.array(request.raw_coordinates_63, dtype=np.float32)
 

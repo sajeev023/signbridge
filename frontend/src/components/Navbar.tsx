@@ -36,9 +36,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const desktopNavItems = [
     { id: 'landing', label: 'Home', icon: Sparkles },
-    { id: 'translator', label: 'Live Translator', icon: Camera },
-    { id: 'vocabulary', label: 'ISL Vocabulary', icon: BookOpen },
+    { id: 'recognizer', label: 'Alphabet AI', icon: Camera },
+    { id: 'translator', label: 'Word Translator', icon: Radio },
     { id: 'learning', label: 'Practice Studio', icon: GraduationCap },
+    { id: 'vocabulary', label: 'ISL Vocabulary', icon: BookOpen },
     { id: 'history', label: 'History', icon: History },
     { id: 'research', label: 'Research & Specs', icon: BarChart3 },
     { id: 'privacy', label: 'Privacy', icon: ShieldCheck },
@@ -46,8 +47,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const mobileBottomItems = [
     { id: 'landing', label: 'Home', icon: Sparkles },
-    { id: 'translator', label: 'Translate', icon: Camera },
-    { id: 'vocabulary', label: 'Vocab', icon: BookOpen },
+    { id: 'recognizer', label: 'Alphabet', icon: Camera },
+    { id: 'translator', label: 'Words', icon: Radio },
     { id: 'learning', label: 'Practice', icon: GraduationCap },
     { id: 'history', label: 'History', icon: History },
   ];

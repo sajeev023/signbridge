@@ -33,45 +33,54 @@ class LandmarkExtractor:
 
         self._hand_detector = None
         self._pose_detector = None
+        self._detector_available = True
+        self._load_error = None
 
     def _ensure_models_loaded(self):
+        if not self._detector_available:
+            return
         if self._hand_detector is not None and self._pose_detector is not None:
             return
 
-        import mediapipe as mp
-        from mediapipe.tasks.python import vision, BaseOptions
+        try:
+            import mediapipe as mp
+            from mediapipe.tasks.python import vision, BaseOptions
 
-        if not self._hand_model_path.exists() or not self._pose_model_path.exists():
-            # Lazy download if missing
-            self._tasks_dir.mkdir(parents=True, exist_ok=True)
-            import urllib.request
-            if not self._hand_model_path.exists():
-                urllib.request.urlretrieve(
-                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                    str(self._hand_model_path)
-                )
-            if not self._pose_model_path.exists():
-                urllib.request.urlretrieve(
-                    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-                    str(self._pose_model_path)
-                )
+            if not self._hand_model_path.exists() or not self._pose_model_path.exists():
+                # Lazy download if missing
+                self._tasks_dir.mkdir(parents=True, exist_ok=True)
+                import urllib.request
+                if not self._hand_model_path.exists():
+                    urllib.request.urlretrieve(
+                        "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                        str(self._hand_model_path)
+                    )
+                if not self._pose_model_path.exists():
+                    urllib.request.urlretrieve(
+                        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        str(self._pose_model_path)
+                    )
 
-        hand_options = vision.HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=str(self._hand_model_path)),
-            num_hands=2,
-            min_hand_detection_confidence=0.35,
-            min_hand_presence_confidence=0.35,
-            min_tracking_confidence=0.35
-        )
-        self._hand_detector = vision.HandLandmarker.create_from_options(hand_options)
+            hand_options = vision.HandLandmarkerOptions(
+                base_options=BaseOptions(model_asset_path=str(self._hand_model_path)),
+                num_hands=2,
+                min_hand_detection_confidence=0.35,
+                min_hand_presence_confidence=0.35,
+                min_tracking_confidence=0.35
+            )
+            self._hand_detector = vision.HandLandmarker.create_from_options(hand_options)
 
-        pose_options = vision.PoseLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=str(self._pose_model_path)),
-            min_pose_detection_confidence=0.35,
-            min_pose_presence_confidence=0.35,
-            min_tracking_confidence=0.35
-        )
-        self._pose_detector = vision.PoseLandmarker.create_from_options(pose_options)
+            pose_options = vision.PoseLandmarkerOptions(
+                base_options=BaseOptions(model_asset_path=str(self._pose_model_path)),
+                min_pose_detection_confidence=0.35,
+                min_pose_presence_confidence=0.35,
+                min_tracking_confidence=0.35
+            )
+            self._pose_detector = vision.PoseLandmarker.create_from_options(pose_options)
+        except Exception as e:
+            self._detector_available = False
+            self._load_error = str(e)
+            print(f"[LandmarkExtractor] Warning: MediaPipe Tasks vision detectors unavailable ({e}). Falling back to landmark pass-through mode.")
 
     def normalize_landmarks(
         self,
@@ -156,32 +165,38 @@ class LandmarkExtractor:
         Extracts and normalizes landmarks directly from an OpenCV BGR video frame.
         """
         self._ensure_models_loaded()
-        import mediapipe as mp
+        if not self._detector_available or self._hand_detector is None or self._pose_detector is None:
+            return self.normalize_landmarks(None, None, None)
 
-        rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+        try:
+            import mediapipe as mp
 
-        hand_res = self._hand_detector.detect(mp_image)
-        pose_res = self._pose_detector.detect(mp_image)
+            rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
-        lh_dict = None
-        rh_dict = None
+            hand_res = self._hand_detector.detect(mp_image)
+            pose_res = self._pose_detector.detect(mp_image)
 
-        if hand_res and hand_res.hand_landmarks:
-            for idx, hand_landmarks in enumerate(hand_res.hand_landmarks):
-                # Check handedness if available
-                handedness = 'Right'
-                if idx < len(hand_res.handedness) and len(hand_res.handedness[idx]) > 0:
-                    handedness = hand_res.handedness[idx][0].category_name
+            lh_dict = None
+            rh_dict = None
 
-                points = [{'x': p.x, 'y': p.y, 'z': p.z} for p in hand_landmarks]
-                if handedness == 'Left':
-                    lh_dict = points
-                else:
-                    rh_dict = points
+            if hand_res and hand_res.hand_landmarks:
+                for idx, hand_landmarks in enumerate(hand_res.hand_landmarks):
+                    # Check handedness if available
+                    handedness = 'Right'
+                    if idx < len(hand_res.handedness) and len(hand_res.handedness[idx]) > 0:
+                        handedness = hand_res.handedness[idx][0].category_name
 
-        pose_dict = None
-        if pose_res and pose_res.pose_landmarks and len(pose_res.pose_landmarks) > 0:
-            pose_dict = [{'x': p.x, 'y': p.y, 'z': p.z} for p in pose_res.pose_landmarks[0]]
+                    points = [{'x': p.x, 'y': p.y, 'z': p.z} for p in hand_landmarks]
+                    if handedness == 'Left':
+                        lh_dict = points
+                    else:
+                        rh_dict = points
 
-        return self.normalize_landmarks(lh_dict, rh_dict, pose_dict)
+            pose_dict = None
+            if pose_res and pose_res.pose_landmarks and len(pose_res.pose_landmarks) > 0:
+                pose_dict = [{'x': p.x, 'y': p.y, 'z': p.z} for p in pose_res.pose_landmarks[0]]
+
+            return self.normalize_landmarks(lh_dict, rh_dict, pose_dict)
+        except Exception:
+            return self.normalize_landmarks(None, None, None)

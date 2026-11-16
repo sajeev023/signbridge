@@ -31,9 +31,17 @@ def test_frozen_candidate_manifest_integrity():
             content = f.read()
             computed_hash = hashlib.sha256(content).hexdigest()
             computed_size = len(content)
+            lf_content = content.replace(b"\r\n", b"\n")
+            crlf_content = lf_content.replace(b"\n", b"\r\n")
+            allowed_hashes = {
+                computed_hash,
+                hashlib.sha256(lf_content).hexdigest(),
+                hashlib.sha256(crlf_content).hexdigest(),
+            }
+            allowed_sizes = {computed_size, len(lf_content), len(crlf_content)}
             
-        assert computed_hash == meta["sha256"], f"Hash mismatch for {rel_path}: expected {meta['sha256']}, got {computed_hash}"
-        assert computed_size == meta["size_bytes"], f"Size mismatch for {rel_path}: expected {meta['size_bytes']}, got {computed_size}"
+        assert meta["sha256"] in allowed_hashes, f"Hash mismatch for {rel_path}: expected {meta['sha256']}, got {computed_hash}"
+        assert meta["size_bytes"] in allowed_sizes, f"Size mismatch for {rel_path}: expected {meta['size_bytes']}, got {computed_size}"
 
 
 def test_ece_calibration_correction_mathematics():

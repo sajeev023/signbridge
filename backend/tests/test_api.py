@@ -1,6 +1,8 @@
 import os
+import sys
 import io
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import cv2
 import numpy as np
 import pytest
@@ -150,4 +152,49 @@ def test_predict_alphabet_endpoint():
     assert "character" in data
     assert "confidence" in data
     assert "all_probabilities" in data
+
+
+def test_coordinate_status_endpoint():
+    resp = client.get("/api/coordinate/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["input_dimension"] == 94
+    assert data["num_classes"] == 24
+    assert "validation_coverage" in data
+    cov = data["validation_coverage"]
+    assert cov["physically_validated_count"] == 12
+    assert cov["awaiting_field_cohort_count"] == 14
+    assert cov["dataset_samples"] == 3840
+
+
+def test_coordinate_model_info_endpoint():
+    resp = client.get("/api/coordinate/model-info")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["model_type"] == "CoordinateMLP"
+    assert data["input_features"]["total_dim"] == 94
+    assert "classes" in data
+    assert len(data["classes"]) == 24
+
+
+def test_coordinate_predict_endpoint_raw_and_landmarks():
+    # 1. 63 raw coordinates
+    dummy_63 = [0.0] * 63
+    resp1 = client.post("/api/coordinate/predict", json={"raw_coordinates_63": dummy_63})
+    assert resp1.status_code == 200
+    d1 = resp1.json()
+    assert "predicted_letter" in d1
+    assert "confidence" in d1
+    assert "top_candidates" in d1
+    assert len(d1["top_candidates"]) <= 3
+
+    # 2. 21 MediaPipe landmarks
+    landmarks_21 = [{"x": 0.5, "y": 0.5, "z": 0.0} for _ in range(21)]
+    resp2 = client.post("/api/coordinate/predict", json={"landmarks": landmarks_21})
+    assert resp2.status_code == 200
+    d2 = resp2.json()
+    assert "predicted_letter" in d2
+    assert "latency_ms" in d2
+
 

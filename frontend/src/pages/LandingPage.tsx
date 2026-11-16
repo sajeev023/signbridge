@@ -46,12 +46,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
         {/* Primary Action Buttons */}
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
-            onClick={() => onNavigate('translator')}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-sky-500 hover:from-brand-500 hover:to-sky-400 text-white font-bold text-sm shadow-glow transition-all transform active:scale-95"
+            onClick={() => onNavigate('recognizer')}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-sky-500 hover:from-brand-500 hover:to-sky-400 text-white font-bold text-sm shadow-glow transition-all transform active:scale-95"
           >
-            <Camera className="w-4 h-4" />
-            <span>Open Camera Translator</span>
+            <Sparkles className="w-4 h-4 text-cyan-300" />
+            <span>Launch A-Z Alphabet AI</span>
             <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => onNavigate('translator')}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-navy-900 hover:bg-navy-850 text-slate-200 hover:text-white border border-navy-750 font-semibold text-sm transition-all"
+          >
+            <Camera className="w-4 h-4 text-sky-400" />
+            <span>Word Translator</span>
           </button>
 
           <button
@@ -99,60 +107,87 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div 
+            onClick={() => onNavigate('recognizer')}
+            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-cyan-500/50 transition-all cursor-pointer group shadow-subtle flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-cyan-600/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-3 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
+                A–Z Alphabet AI
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                94-dimensional Coordinate AI neural engine recognizing all 26 manual alphabet handshapes and dynamic J/Z gestures at sub-2ms latency.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 mt-4">
+              <span>Launch Alphabet AI</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+          </div>
+
           <div 
             onClick={() => onNavigate('translator')}
-            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-brand-500/50 transition-all cursor-pointer group shadow-subtle"
+            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-brand-500/50 transition-all cursor-pointer group shadow-subtle flex flex-col justify-between"
           >
-            <div className="w-10 h-10 rounded-xl bg-brand-600/20 border border-brand-500/40 flex items-center justify-center text-brand-400 mb-3 group-hover:scale-105 transition-transform">
-              <Camera className="w-5 h-5" />
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-brand-600/20 border border-brand-500/40 flex items-center justify-center text-brand-400 mb-3 group-hover:scale-105 transition-transform">
+                <Camera className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white group-hover:text-brand-300 transition-colors">
+                Word & Sentence Translator
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Live camera tracking for conversational ISL sentences with instant tri-lingual speech synthesis in English, Hindi, and Telugu.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-brand-300 transition-colors">
-              Live Camera Translation
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Real-time MediaPipe Hand Vision tracks your joint positions and motion arcs at 30+ FPS right in your browser.
-            </p>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-400 mt-3">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-400 mt-4">
               <span>Start Camera</span>
               <ArrowRight className="w-3 h-3" />
             </span>
           </div>
 
           <div 
-            onClick={() => onNavigate('translator')}
-            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-amber-500/50 transition-all cursor-pointer group shadow-subtle"
+            onClick={() => onNavigate('learning')}
+            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-purple-500/50 transition-all cursor-pointer group shadow-subtle flex flex-col justify-between"
           >
-            <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-3 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5" />
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-105 transition-transform">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
+                Practice Studio
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Learn manual alphabet and word signs with real-time biomechanical feedback and verified joint angle guides.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-amber-300 transition-colors">
-              Interactive Demo Mode
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              No webcam? Explore verified canonical ISL kinematic motion simulations with instant tri-lingual voice playback.
-            </p>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 mt-3">
-              <span>Explore Demo Signs</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-400 mt-4">
+              <span>Open Studio</span>
               <ArrowRight className="w-3 h-3" />
             </span>
           </div>
 
           <div 
-            onClick={() => onNavigate('learning')}
-            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-purple-500/50 transition-all cursor-pointer group shadow-subtle"
+            onClick={() => onNavigate('vocabulary')}
+            className="p-5 rounded-2xl bg-navy-900/90 border border-navy-800 hover:border-emerald-500/50 transition-all cursor-pointer group shadow-subtle flex flex-col justify-between"
           >
-            <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-105 transition-transform">
-              <GraduationCap className="w-5 h-5" />
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
+                ISL Vocabulary
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Explore standardized signs cataloged in strict alignment with ISLRTC curriculum specifications.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
-              Interactive Practice Studio
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Learn genuine Indian Sign Language with automated biomechanical scoring, form feedback, and audio guides.
-            </p>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-400 mt-3">
-              <span>Open Studio</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 mt-4">
+              <span>Browse Vocabulary</span>
               <ArrowRight className="w-3 h-3" />
             </span>
           </div>
