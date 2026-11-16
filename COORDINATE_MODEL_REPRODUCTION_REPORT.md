@@ -1,8 +1,8 @@
 # SIGNBRIDGE — Coordinate Model Reproduction & Calibration Report
 **Document ID:** REPRO-COORD-MODEL-PHASE7  
 **Branch:** `experiment/coordinate-ai-forensic-validation`  
-**Evaluator:** Forensic Validation Suite ([`reproduce_coordinate_model.py`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/scripts/reproduce_coordinate_model.py))  
-**Model Under Test:** [`backend/saved_models/coordinate_ai_model.json`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/saved_models/coordinate_ai_model.json)  
+**Evaluator:** Forensic Validation Suite ([`reproduce_coordinate_model.py`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/scripts/reproduce_coordinate_model.py))  
+**Model Under Test:** [`backend/saved_models/coordinate_ai_model.json`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/saved_models/coordinate_ai_model.json)  
 
 ---
 
@@ -39,14 +39,18 @@ Evaluated across 40 samples per class for all 24 static letters in the test coho
 | **I** | 40 | 40 | **100.0%** | None |
 | **K** | 40 | 40 | **100.0%** | None |
 | **L** | 40 | 40 | **100.0%** | None |
-| **M** | 40 | 38 | **95.0%** | M $ightarrow$ N (2 samples, low knuckle emergence) |
-| **N** | 40 | 39 | **97.5%** | N $ightarrow$ M (1 sample) |
+| **M** | 40 | 38 | **95.0%** | M $
+ightarrow$ N (2 samples, low knuckle emergence) |
+| **N** | 40 | 39 | **97.5%** | N $
+ightarrow$ M (1 sample) |
 | **O** | 40 | 40 | **100.0%** | None |
 | **P** | 40 | 40 | **100.0%** | None |
 | **Q** | 40 | 40 | **100.0%** | None |
 | **R** | 40 | 40 | **100.0%** | None |
-| **S** | 40 | 39 | **97.5%** | S $ightarrow$ A (1 sample, thumb shifted outward) |
-| **T** | 40 | 39 | **97.5%** | T $ightarrow$ S (1 sample) |
+| **S** | 40 | 39 | **97.5%** | S $
+ightarrow$ A (1 sample, thumb shifted outward) |
+| **T** | 40 | 39 | **97.5%** | T $
+ightarrow$ S (1 sample) |
 | **U** | 40 | 40 | **100.0%** | None |
 | **V** | 40 | 40 | **100.0%** | None |
 | **W** | 40 | 40 | **100.0%** | None |

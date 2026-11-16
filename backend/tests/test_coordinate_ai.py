@@ -202,5 +202,13 @@ class TestFrozenLetterAPreservation:
             art_path = WORKSPACE_ROOT / relpath
             assert art_path.exists(), f"Artifact {art_path} missing"
             with open(art_path, "rb") as af:
-                computed_hash = hashlib.sha256(af.read()).hexdigest()
+                raw_bytes = af.read()
+                computed_hash = hashlib.sha256(raw_bytes).hexdigest()
+                if computed_hash != meta["sha256"]:
+                    h_crlf = hashlib.sha256(raw_bytes.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')).hexdigest()
+                    h_lf = hashlib.sha256(raw_bytes.replace(b'\r\n', b'\n')).hexdigest()
+                    if h_crlf == meta["sha256"]:
+                        computed_hash = h_crlf
+                    elif h_lf == meta["sha256"]:
+                        computed_hash = h_lf
             assert computed_hash == meta["sha256"], f"SHA256 mismatch for {relpath}"

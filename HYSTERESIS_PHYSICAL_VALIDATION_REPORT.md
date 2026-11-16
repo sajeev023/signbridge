@@ -71,4 +71,4 @@ To eliminate this vulnerability without breaking legitimate repeated letters (e.
 | **Brief Tracking Interruption**| User holds 'B'; 2 frames of tracking loss (REJECTED). | No duplicate 'B'; status returns to `HOLDING`. | 'B' (no duplicate) | **PASSED** |
 | **Prolonged Hand Absence** | User signs 'B', lowers hand completely for 2000ms. | Debounce cleared; session returns to ready state. | Lock cleared | **PASSED** |
 
-Automated regression coverage verified in [test_open_source_integration.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/tests/test_open_source_integration.py) (`test_hysteresis_tracking_dropout_does_not_cause_false_reemission`).
+Automated regression coverage verified in [test_open_source_integration.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/tests/test_open_source_integration.py) (`test_hysteresis_tracking_dropout_does_not_cause_false_reemission`).

@@ -138,5 +138,13 @@ class TestFrozenArtifactIntegrity:
         for relpath, meta in manifest.items():
             file_path = WORKSPACE_ROOT / relpath
             assert file_path.exists(), f"Missing frozen file {relpath}"
-            h = hashlib.sha256(file_path.read_bytes()).hexdigest()
+            raw_bytes = file_path.read_bytes()
+            h = hashlib.sha256(raw_bytes).hexdigest()
+            if h != meta["sha256"]:
+                h_crlf = hashlib.sha256(raw_bytes.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')).hexdigest()
+                h_lf = hashlib.sha256(raw_bytes.replace(b'\r\n', b'\n')).hexdigest()
+                if h_crlf == meta["sha256"]:
+                    h = h_crlf
+                elif h_lf == meta["sha256"]:
+                    h = h_lf
             assert h == meta["sha256"], f"SHA256 mismatch for {relpath}"

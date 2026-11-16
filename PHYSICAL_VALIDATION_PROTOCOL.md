@@ -39,7 +39,7 @@ To guarantee zero data leakage and protect participant privacy, the physical cam
 ```
 
 ### 1.1 Mandatory Informed Consent Gate
-Before any session begins, the participant must review and sign the informed consent agreement. The automated runner [session_protocol.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py) will immediately terminate with an exception if `informed_consent_granted=False`.
+Before any session begins, the participant must review and sign the informed consent agreement. The automated runner [session_protocol.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py) will immediately terminate with an exception if `informed_consent_granted=False`.
 
 ### 1.2 Participant Pseudonymization
 All sessions must use standardized pseudonym format:

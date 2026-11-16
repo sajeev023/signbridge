@@ -4,7 +4,7 @@
     "predicted_letter": "A",
     "confidence": 0.92,
     "fallback_used": false,
-    "latency_ms": 7.428900000377325,
+    "latency_ms": 14.466000022366643,
     "provider_name": "nvidia_nim"
   },
   "invalid_api_key_fallback": {
@@ -12,7 +12,7 @@
     "predicted_letter": "REJECTED",
     "fallback_used": true,
     "error_logged": "NVIDIA NIM error (HTTPError): HTTP Error 401: Unauthorized. Routed to local engine.",
-    "latency_ms": 5.353500000637723,
+    "latency_ms": 23.855999985244125,
     "provider_name": "local_coordinate_engine (fallback)"
   },
   "timeout_fallback": {
@@ -20,7 +20,7 @@
     "predicted_letter": "REJECTED",
     "fallback_used": true,
     "error_logged": "NVIDIA NIM error (TimeoutError): timed out. Routed to local engine.",
-    "total_elapsed_ms": 105.76439999931608,
+    "total_elapsed_ms": 117.04610000015236,
     "provider_name": "local_coordinate_engine (fallback)"
   },
   "connection_refused_fallback": {
@@ -28,7 +28,7 @@
     "predicted_letter": "REJECTED",
     "fallback_used": true,
     "error_logged": "NVIDIA NIM error (URLError): <urlopen error timed out>. Routed to local engine.",
-    "latency_ms": 108.94350000125996,
+    "latency_ms": 101.58369998680428,
     "provider_name": "local_coordinate_engine (fallback)"
   },
   "malformed_response_fallback": {
@@ -36,14 +36,14 @@
     "predicted_letter": "REJECTED",
     "fallback_used": true,
     "error_logged": "NVIDIA NIM error (JSONDecodeError): Expecting property name enclosed in double quotes: line 1 column 2 (char 1). Routed to local engine.",
-    "latency_ms": 335.0506000006135,
+    "latency_ms": 207.25919998949394,
     "provider_name": "local_coordinate_engine (fallback)"
   },
   "pure_local_provider": {
     "status": "PASS",
     "predicted_letter": "REJECTED",
     "confidence": 0.2933921813964844,
-    "latency_ms": 0.922799999898416,
+    "latency_ms": 0.11789999553002417,
     "provider_name": "local_coordinate_engine"
   }
 }

@@ -10,16 +10,16 @@
 ## 1. Test Suite Verification (150/150 Tests Passing)
 
 The complete SIGNBRIDGE regression suite now encompasses 150 automated tests, including:
-- 8 Core Physical Interaction Robustness Scenarios in [test_hysteresis_robustness.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/tests/test_hysteresis_robustness.py).
-- 5 Multi-Participant Camera Stress Scenarios with automated cross-platform parity in [test_hysteresis_cross_validation.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/tests/test_hysteresis_cross_validation.py).
+- 8 Core Physical Interaction Robustness Scenarios in [test_hysteresis_robustness.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/tests/test_hysteresis_robustness.py).
+- 5 Multi-Participant Camera Stress Scenarios with automated cross-platform parity in [test_hysteresis_cross_validation.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/tests/test_hysteresis_cross_validation.py).
 
 ---
 
 ## 2. Python vs TypeScript Behavioral Parity
 
 Every test trace was executed simultaneously through:
-1. Python: `NochnackTemporalHysteresisFilter` ([nochnack_temporal_hysteresis.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/open_source_integration/nochnack_temporal_hysteresis.py))
-2. TypeScript: `NochnackHysteresisFilter` ([openSourceIntegrationAdapter.ts](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/frontend/src/services/openSourceIntegrationAdapter.ts))
+1. Python: `NochnackTemporalHysteresisFilter` ([nochnack_temporal_hysteresis.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/open_source_integration/nochnack_temporal_hysteresis.py))
+2. TypeScript: `NochnackHysteresisFilter` ([openSourceIntegrationAdapter.ts](file:///c:/Users/LFDC/Downloads/signbridge-main/frontend/src/services/openSourceIntegrationAdapter.ts))
 
 ### Bug Discovered & Resolved During Cross-Platform Audit
 - **Symptom:** During 1–4 frame tracking dropouts (`predicted_sign = 'REJECTED'`), Python emitted `status = 'REJECTED'`, whereas TypeScript emitted `status = 'NEUTRAL'`.

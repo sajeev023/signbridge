@@ -1,8 +1,8 @@
 # SIGNBRIDGE — NVIDIA NIM Fallback & Fault Tolerance Validation Report
 **Document ID:** VAL-NVIDIA-NIM-FALLBACK-PHASE7  
 **Branch:** `experiment/coordinate-ai-forensic-validation`  
-**Test Suite:** [`backend/scripts/validate_nvidia_nim_fallback.py`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/scripts/validate_nvidia_nim_fallback.py)  
-**Gateway Under Test:** [`NvidiaNimProvider`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/coordinate_ai/external_provider.py)  
+**Test Suite:** [`backend/scripts/validate_nvidia_nim_fallback.py`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/scripts/validate_nvidia_nim_fallback.py)  
+**Gateway Under Test:** [`NvidiaNimProvider`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/coordinate_ai/external_provider.py)  
 
 ---
 

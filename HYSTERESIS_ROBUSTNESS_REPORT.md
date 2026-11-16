@@ -9,7 +9,7 @@
 
 ## 1. Physical Camera Interaction Test Results
 
-All 8 mandatory interaction scenarios were evaluated via automated regression testing in [test_hysteresis_robustness.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/tests/test_hysteresis_robustness.py):
+All 8 mandatory interaction scenarios were evaluated via automated regression testing in [test_hysteresis_robustness.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/tests/test_hysteresis_robustness.py):
 
 ```
 +---------------------------------------------------------------------------------------------------------+

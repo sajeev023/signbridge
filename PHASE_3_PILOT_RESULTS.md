@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-Physical-human validation of SIGNBRIDGE was executed across all available genuine human captures in [real_human_evaluation_dataset.json](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/data/real_human_evaluation_dataset.json). In strict compliance with zero data fabrication standards, no synthetic samples were relabeled as human, and no thresholds were tuned against held-out data.
+Physical-human validation of SIGNBRIDGE was executed across all available genuine human captures in [real_human_evaluation_dataset.json](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/data/real_human_evaluation_dataset.json). In strict compliance with zero data fabrication standards, no synthetic samples were relabeled as human, and no thresholds were tuned against held-out data.
 
 ```
 +--------------------------------------------------------------------------------------------------------+

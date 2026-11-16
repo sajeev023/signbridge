@@ -11,7 +11,7 @@
 A forensic audit of all landmark datasets was conducted to establish strict ground-truth provenance:
 
 1. **`backend/data/alphabet_dataset_multisigner.json` (3,840 Static Samples):**
-   - **Ground-Truth Source:** **Synthetic Biomechanical Kinematic Simulation** generated via [`backend/build_alphabet_dataset.py`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/build_alphabet_dataset.py).
+   - **Ground-Truth Source:** **Synthetic Biomechanical Kinematic Simulation** generated via [`backend/build_alphabet_dataset.py`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/build_alphabet_dataset.py).
    - **Generation Mechanism:** Forward anatomical kinematic chains (`compute_finger_chain`) combined with 3D Euler rotations (pitch $\pm 15^\circ$, yaw $\pm 18^\circ$, roll $\pm 12^\circ$), participant hand scale factors ($0.12 - 0.18$), finger length ratios ($0.88 - 1.05$), and Gaussian motor perturbation noise ($\sigma = 0.03$).
    - **Strict Provenance Finding:** This dataset is **NOT** a physical camera recording of human signers. It is an algorithmic, kinematically grounded multi-signer simulation designed to evaluate structural generalization across hand geometries.
 
@@ -62,7 +62,7 @@ alphabet_dataset_multisigner.json Partitioning:
 
 ## 4. Frozen Letter A Candidate Integrity Audit
 
-All seven candidate artifacts recorded in [`backend/letter_a_frozen_manifest.json`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/letter_a_frozen_manifest.json) were verified bit-for-bit identical:
+All seven candidate artifacts recorded in [`backend/letter_a_frozen_manifest.json`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/letter_a_frozen_manifest.json) were verified bit-for-bit identical:
 
 | Artifact Path | Manifest SHA-256 | Forensic SHA-256 | Status |
 | :--- | :--- | :--- | :--- |

@@ -1,8 +1,8 @@
 # SIGNBRIDGE — Physical Camera Coordinate Validation Report
 **Document ID:** VAL-PHYSICAL-CAMERA-PHASE7  
 **Branch:** `experiment/coordinate-ai-forensic-validation`  
-**Benchmark:** 42 Genuine Human Captures ([`real_human_benchmark.json`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/titan/datasets/asl_alphabet/metadata/real_human_benchmark.json))  
-**Session Protocol:** [`backend/validation/session_protocol.py`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py)  
+**Benchmark:** 42 Genuine Human Captures ([`real_human_benchmark.json`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/titan/datasets/asl_alphabet/metadata/real_human_benchmark.json))  
+**Session Protocol:** [`backend/validation/session_protocol.py`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py)  
 
 ---
 
@@ -39,16 +39,16 @@ The 42 physical-human camera captures from 6 real human signers were evaluated t
 
 ### 2.1 D versus P
 - **Morphology:** D has an upright pointing index finger; P has a downward pointing index and middle finger.
-- **Distinguishing Features:** Palm longitudinal orientation vector $y$-component ($\mathbf{v}_{	ext{long}} \cdot \mathbf{y}$):
-  - D: $\mathbf{v}_{	ext{long}} \cdot \mathbf{y} pprox -0.92$ (pointing straight up in camera frame).
-  - P: $\mathbf{v}_{	ext{long}} \cdot \mathbf{y} pprox +0.78$ (pointing downward).
+- **Distinguishing Features:** Palm longitudinal orientation vector $y$-component ($\mathbf{v}_{\text{long}} \cdot \mathbf{y}$):
+  - D: $\mathbf{v}_{\text{long}} \cdot \mathbf{y} \approx -0.92$ (pointing straight up in camera frame).
+  - P: $\mathbf{v}_{\text{long}} \cdot \mathbf{y} \approx +0.78$ (pointing downward).
 - **Result:** Orientation features (indices 91–93) prevent confusion between D and P.
 
 ### 2.2 C versus Y
 - **Morphology:** C is an open curved arc; Y is a wide shaka (thumb and pinky extended, middle 3 curled).
 - **Distinguishing Features:** Feature 76 (Thumb-Tip to Pinky-Tip Euclidean distance normalized by palm scale):
-  - C: Distance $\in [0.45, 0.85] S_{	ext{palm}}$.
-  - Y: Distance $\in [1.60, 2.10] S_{	ext{palm}}$.
+  - C: Distance $\in [0.45, 0.85] S_{\text{palm}}$.
+  - Y: Distance $\in [1.60, 2.10] S_{\text{palm}}$.
 - **Result:** $100\%$ precision on physical Y captures (6/6) and zero confusion with C.
 
 ### 2.3 Letter A Specialist Routing
@@ -57,26 +57,26 @@ The 42 physical-human camera captures from 6 real human signers were evaluated t
 
 ### 2.4 M / N / T Disambiguation
 - **Feature Delta:** Direct 3D distance from thumb tip ($P_4$) to index MCP ($P_5$), middle MCP ($P_9$), and ring MCP ($P_{13}$).
-  - T: $\|P_4 - P_5\|_2 < 0.25 S_{	ext{palm}}$ (emerges between index and middle).
-  - N: $\|P_4 - P_9\|_2 < 0.25 S_{	ext{palm}}$ (emerges between middle and ring).
-  - M: $\|P_4 - P_{13}\|_2 < 0.25 S_{	ext{palm}}$ (emerges between ring and pinky).
+  - T: $\|P_4 - P_5\|_2 < 0.25 S_{\text{palm}}$ (emerges between index and middle).
+  - N: $\|P_4 - P_9\|_2 < 0.25 S_{\text{palm}}$ (emerges between middle and ring).
+  - M: $\|P_4 - P_{13}\|_2 < 0.25 S_{\text{palm}}$ (emerges between ring and pinky).
 
 ### 2.5 O Confidence Rejection
-- When users form ambiguous partial curvatures (gap $\in [0.40, 0.70] S_{	ext{palm}}$), model posterior confidence drops to $0.45 - 0.62$, safely triggering the low-confidence rejection threshold ($<0.70$).
+- When users form ambiguous partial curvatures (gap $\in [0.40, 0.70] S_{\text{palm}}$), model posterior confidence drops to $0.45 - 0.62$, safely triggering the low-confidence rejection threshold ($<0.70$).
 
 ### 2.6 J / Z Dynamic Temporal Trajectory Recognition
-- Evaluated via [`dynamicTrajectoryEngine.ts`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/frontend/src/services/dynamicTrajectoryEngine.ts).
-- Dynamic gating requires active 16-frame stroke displacement $\ge 0.70 	imes S_{	ext{palm}}$.
+- Evaluated via [`dynamicTrajectoryEngine.ts`](file:///c:/Users/LFDC/Downloads/signbridge-main/frontend/src/services/dynamicTrajectoryEngine.ts).
+- Dynamic gating requires active 16-frame stroke displacement $\ge 0.70 \times S_{\text{palm}}$.
 - Static handshapes are barred from triggering J or Z, eliminating false positive triggers during static fingerspelling.
 
 ---
 
 ## 3. Controlled Session Protocol Trials for Missing Classes
 
-To prepare for complete alphabet physical coverage, controlled sessions were executed using [`PhysicalValidationSession`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py) with explicit voluntary informed consent:
+To prepare for complete alphabet physical coverage, controlled sessions were executed using [`PhysicalValidationSession`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py) with explicit voluntary informed consent:
 
 - **Target Classes (14):** G, H, I, J, K, M, N, P, Q, S, T, W, X, Z.
 - **Sessions Recorded:** 2 sessions (`P_OPERATOR_01` under `TRAIN_COHORT` and `P_HELDOUT_02` under `HELDOUT_EVAL_COHORT`).
 - **Total Controlled Trials:** 28 trials logged.
 - **Conditions Tested:** 3 orientations (`frontal`, `15deg_pitch`, `15deg_yaw`), 3 distances (`near_35cm`, `medium_55cm`, `far_85cm`), and 3 lighting environments (`normal_indoor`, `bright_overhead`, `dim_warm`).
-- **Session Files Persisted:** Located in [`backend/data/physical_validation_sessions/`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/data/physical_validation_sessions/).
+- **Session Files Persisted:** Located in [`backend/data/physical_validation_sessions/`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/data/physical_validation_sessions/).

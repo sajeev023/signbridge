@@ -46,7 +46,7 @@ Before the operator begins camera testing with human participants:
 - [x] Python virtual environment active and all 136 tests passing.
 - [x] Frontend compiled into production bundle (`dist/`).
 - [x] All 7 frozen Letter A candidate artifacts verified via SHA-256 digests.
-- [x] Automated session logging script [session_protocol.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py) deployed.
+- [x] Automated session logging script [session_protocol.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py) deployed.
 - [x] Per-class anatomical checklist prepared for operator reference.
 - [ ] Physical participants recruited (Minimum: 5 Training Signers, 3 Held-Out Signers).
 - [ ] Physical camera trials recorded and saved to `backend/data/physical_validation_sessions/`.

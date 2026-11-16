@@ -1,7 +1,7 @@
 # SIGNBRIDGE — End-to-End Latency & Performance Benchmark Report
 **Document ID:** PERF-E2E-LATENCY-PHASE7  
 **Branch:** `experiment/coordinate-ai-forensic-validation`  
-**Benchmark Suite:** [`backend/scripts/benchmark_e2e_latency.py`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/scripts/benchmark_e2e_latency.py)  
+**Benchmark Suite:** [`backend/scripts/benchmark_e2e_latency.py`](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/scripts/benchmark_e2e_latency.py)  
 **Sample Count:** 1,000 continuous benchmark cycles  
 
 ---

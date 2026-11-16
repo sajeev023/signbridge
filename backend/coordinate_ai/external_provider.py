@@ -12,7 +12,26 @@ import time
 import json
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field
+
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    class BaseModel:
+        def __init__(self, **kwargs):
+            for cls in reversed(self.__class__.__mro__):
+                for k, v in cls.__dict__.items():
+                    if not k.startswith('_') and not callable(v):
+                        setattr(self, k, v)
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+        def dict(self):
+            return {k: getattr(self, k) for k in self.__dict__ if not k.startswith('_')}
+
+    def Field(default=None, **kwargs):
+        if default is ...:
+            return None
+        return default
 
 
 class CoordinateInferenceRequest(BaseModel):

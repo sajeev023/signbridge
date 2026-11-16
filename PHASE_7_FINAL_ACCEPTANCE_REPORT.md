@@ -26,12 +26,12 @@ All six investigation mandates specified in Phase 7 have been forensically execu
 
 All 6 mandatory deliverables are committed in the repository root:
 
-1. [`COORDINATE_DATASET_FORENSIC_AUDIT.md`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/COORDINATE_DATASET_FORENSIC_AUDIT.md) — Exhaustive provenance, duplicate absence, class balance, and split separation audit.
-2. [`COORDINATE_MODEL_REPRODUCTION_REPORT.md`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/COORDINATE_MODEL_REPRODUCTION_REPORT.md) — Bit-for-bit model reproduction, calibration curve (ECE 0.056), and class breakdown.
-3. [`PHYSICAL_CAMERA_COORDINATE_VALIDATION.md`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/PHYSICAL_CAMERA_COORDINATE_VALIDATION.md) — 42-capture human evaluation, D vs P, C vs Y, A specialist, M/N/T, O rejection, and J/Z tracking.
-4. [`END_TO_END_LATENCY_REPORT.md`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/END_TO_END_LATENCY_REPORT.md) — 1,000-run latency breakdown, 14.52 ms mean, 68.9 FPS throughput.
-5. [`NVIDIA_NIM_FALLBACK_VALIDATION.md`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/NVIDIA_NIM_FALLBACK_VALIDATION.md) — 6-scenario fault-tolerance matrix, zero-downtime fallback proof.
-6. [`PHASE_7_FINAL_ACCEPTANCE_REPORT.md`](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/PHASE_7_FINAL_ACCEPTANCE_REPORT.md) — Final executive acceptance synthesis and production merge gates.
+1. [`COORDINATE_DATASET_FORENSIC_AUDIT.md`](file:///c:/Users/LFDC/Downloads/signbridge-main/COORDINATE_DATASET_FORENSIC_AUDIT.md) — Exhaustive provenance, duplicate absence, class balance, and split separation audit.
+2. [`COORDINATE_MODEL_REPRODUCTION_REPORT.md`](file:///c:/Users/LFDC/Downloads/signbridge-main/COORDINATE_MODEL_REPRODUCTION_REPORT.md) — Bit-for-bit model reproduction, calibration curve (ECE 0.056), and class breakdown.
+3. [`PHYSICAL_CAMERA_COORDINATE_VALIDATION.md`](file:///c:/Users/LFDC/Downloads/signbridge-main/PHYSICAL_CAMERA_COORDINATE_VALIDATION.md) — 42-capture human evaluation, D vs P, C vs Y, A specialist, M/N/T, O rejection, and J/Z tracking.
+4. [`END_TO_END_LATENCY_REPORT.md`](file:///c:/Users/LFDC/Downloads/signbridge-main/END_TO_END_LATENCY_REPORT.md) — 1,000-run latency breakdown, 14.52 ms mean, 68.9 FPS throughput.
+5. [`NVIDIA_NIM_FALLBACK_VALIDATION.md`](file:///c:/Users/LFDC/Downloads/signbridge-main/NVIDIA_NIM_FALLBACK_VALIDATION.md) — 6-scenario fault-tolerance matrix, zero-downtime fallback proof.
+6. [`PHASE_7_FINAL_ACCEPTANCE_REPORT.md`](file:///c:/Users/LFDC/Downloads/signbridge-main/PHASE_7_FINAL_ACCEPTANCE_REPORT.md) — Final executive acceptance synthesis and production merge gates.
 
 ---
 

@@ -29,7 +29,7 @@ This audit accounts for all physical data currently captured, preserved, and ope
 
 ## 2. Inventory of the 12 Physical-Human Benchmark Classes
 
-All 42 records preserved in [real_human_evaluation_dataset.json](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/data/real_human_evaluation_dataset.json) originate from genuine camera captures across 6 consenting participants:
+All 42 records preserved in [real_human_evaluation_dataset.json](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/data/real_human_evaluation_dataset.json) originate from genuine camera captures across 6 consenting participants:
 
 | Class | Total Samples | Training Cohort (Signer 1, 2) | Held-Out Test Cohort (Signer 3..6) | Camera Distance Range | Lighting Conditions |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -55,7 +55,7 @@ The following 14 ASL alphabet classes currently lack physical-human benchmark ca
 **G, H, I, J, K, M, N, P, Q, S, T, W, X, Z**
 
 ### Field Acquisition Protocol
-1. **Runner:** [session_protocol.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py) executes automated consent verification, metadata logging, and trajectory persistence.
+1. **Runner:** [session_protocol.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py) executes automated consent verification, metadata logging, and trajectory persistence.
 2. **Participant Allocation:**
    - Training cohort: Minimum 4 diverse signers (`P_TRAIN_01` through `P_TRAIN_04`).
    - Held-out evaluation cohort: Minimum 4 isolated signers (`P_TEST_01` through `P_TEST_04`).

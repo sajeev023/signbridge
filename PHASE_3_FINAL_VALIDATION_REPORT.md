@@ -38,7 +38,7 @@ Phase 3 validation achieved four major milestones:
 ## 3. Mandatory Next Steps for Field Deployment
 
 To achieve unblocked production deployment to `main`:
-1. Execute the physical camera protocol defined in [PHYSICAL_VALIDATION_PROTOCOL.md](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/PHYSICAL_VALIDATION_PROTOCOL.md) with consenting signers.
+1. Execute the physical camera protocol defined in [PHYSICAL_VALIDATION_PROTOCOL.md](file:///c:/Users/LFDC/Downloads/signbridge-main/PHYSICAL_VALIDATION_PROTOCOL.md) with consenting signers.
 2. Prioritize recording physical captures for the 14 unrepresented classes (G, H, I, J, K, M, N, P, Q, S, T, W, X, Z).
 3. Validate dynamic J and Z trajectory tracing across multiple signer speeds and camera distances.
 4. Log all sessions via `session_protocol.py` and execute final verification via `session_evaluator.py`.

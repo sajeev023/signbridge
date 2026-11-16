@@ -27,7 +27,7 @@ Under strict zero-fabrication research doctrine, this report details the verifie
 
 ## 2. Inventory of the 12 Physical-Human Benchmark Classes
 
-All 42 records from [real_human_evaluation_dataset.json](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/data/real_human_evaluation_dataset.json) represent genuine consenting human captures:
+All 42 records from [real_human_evaluation_dataset.json](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/data/real_human_evaluation_dataset.json) represent genuine consenting human captures:
 
 | Class | Total Samples | Training Cohort (Signer 1, 2) | Held-Out Test Cohort (Signer 3..6) | Camera Distance Range | Lighting Conditions |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -53,7 +53,7 @@ The following 14 ASL alphabet classes currently lack physical-human benchmark ca
 **G, H, I, J, K, M, N, P, Q, S, T, W, X, Z**
 
 ### Field Acquisition Plan
-1. **Tool:** Use the automated [session_protocol.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py) runner.
+1. **Tool:** Use the automated [session_protocol.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py) runner.
 2. **Participant Cohorts:** Minimum 5 training participants (`P_TRAIN_01..05`) and 3 held-out evaluation participants (`P_TEST_01..03`).
 3. **Privacy Protocol:** Enforce landmark-only persistence; raw video and facial imagery remain strictly blocked in memory.
 4. **Dynamic Trajectory Logging:** Explicitly capture actual multi-frame fingertip trajectories for J and Z across varying signing cadences.

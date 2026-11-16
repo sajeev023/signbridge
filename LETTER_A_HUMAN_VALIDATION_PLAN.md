@@ -32,7 +32,7 @@ This document defines the **Physical Human Generalization Validation Protocol** 
 
 ## 3. Data Collection Procedure via Zero-Leak Studio
 
-Validation data acquisition must utilize the built-in [ZeroLeakDataCollector.tsx](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/frontend/src/components/ZeroLeakDataCollector.tsx):
+Validation data acquisition must utilize the built-in [ZeroLeakDataCollector.tsx](file:///c:/Users/LFDC/Downloads/signbridge-main/frontend/src/components/ZeroLeakDataCollector.tsx):
 
 1. **Protocol Consent:** Participant checks the informed consent box. Zero facial imagery, RGB video, or audio is recorded; only 21 MediaPipe coordinates and metadata are retained.
 2. **Signer ID Assignment:** Assign cohort IDs (`Signer_P26` through `Signer_P35`) under the `Held-Out Test` cohort.

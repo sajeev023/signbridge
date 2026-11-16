@@ -33,4 +33,4 @@ Under project charter (**ZERO TOLERANCE FOR KNOWN UNVERIFIED ALPHABET CLASSES**)
 - **Recognition Core & Web Architecture:** Production-ready (150 tests passing, cross-platform verified, zero memory/privacy leaks).
 - **Production `main` Merge:** **CONDITIONALLY GATED.**
 
-Merging into production `main` remains strictly gated until genuine physical-human participant sessions are completed for the 14 unrepresented classes (**G, H, I, J, K, M, N, P, Q, S, T, W, X, Z**) using [session_protocol.py](file:///C:/Users/ADMIN/.gemini/antigravity/scratch/signbridge/backend/validation/session_protocol.py).
+Merging into production `main` remains strictly gated until genuine physical-human participant sessions are completed for the 14 unrepresented classes (**G, H, I, J, K, M, N, P, Q, S, T, W, X, Z**) using [session_protocol.py](file:///c:/Users/LFDC/Downloads/signbridge-main/backend/validation/session_protocol.py).
