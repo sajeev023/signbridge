@@ -27,7 +27,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-900 border border-brand-800/80 shadow-glow">
           <Sparkles className="w-3.5 h-3.5 text-brand-400 animate-pulse" />
           <span className="text-xs font-bold text-brand-200 tracking-wide font-mono uppercase">
-            Indian Sign Language AI Platform
+            Indian Sign Language & Manual Alphabet AI Platform
           </span>
         </div>
 
@@ -40,7 +40,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
         <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
           Break communication barriers with real-time computer vision AI.
-          Translates Indian Sign Language gestures into spoken <strong className="text-white">English, Hindi, and Telugu</strong> directly in your browser.
+          Translates 26-letter manual alphabet signs and 10 core ISL gestures into spoken <strong className="text-white">English, Hindi, and Telugu</strong> directly in your browser.
         </p>
 
         {/* Primary Action Buttons */}
@@ -59,7 +59,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-navy-900 hover:bg-navy-850 text-slate-200 hover:text-white border border-navy-750 font-semibold text-sm transition-all"
           >
             <Camera className="w-4 h-4 text-sky-400" />
-            <span>Word Translator</span>
+            <span>Word Translator (10 ISL Signs)</span>
           </button>
 
           <button
@@ -86,12 +86,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
           <div className="bg-navy-900/80 border border-navy-800 rounded-2xl p-3">
             <span className="text-[10px] font-mono text-slate-400 uppercase block">Safety Threshold</span>
             <span className="text-lg font-bold text-brand-400">τ = 0.75</span>
-            <span className="text-[10px] text-slate-400 block">Zero hallucinations</span>
+            <span className="text-[10px] text-slate-400 block">Calibrated confidence</span>
           </div>
           <div className="bg-navy-900/80 border border-navy-800 rounded-2xl p-3">
-            <span className="text-[10px] font-mono text-slate-400 uppercase block">Linguistic Base</span>
-            <span className="text-lg font-bold text-indigo-400">ISLRTC</span>
-            <span className="text-[10px] text-slate-400 block">Official Indian signs</span>
+            <span className="text-[10px] font-mono text-slate-400 uppercase block">Linguistic Scope</span>
+            <span className="text-lg font-bold text-indigo-400">26 A-Z + 10 ISL</span>
+            <span className="text-[10px] text-slate-400 block">Single-hand & ISLRTC signs</span>
           </div>
         </div>
       </section>
@@ -120,7 +120,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 A–Z Alphabet AI
               </h3>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                94-dimensional Coordinate AI neural engine recognizing all 26 manual alphabet handshapes and dynamic J/Z gestures at sub-2ms latency.
+                94-dimensional Coordinate AI neural engine recognizing all 26 manual alphabet handshapes (Single-Hand ASL / International Standard) and dynamic J/Z gestures at sub-2ms latency, with experimental ISLRTC bimanual mode.
               </p>
             </div>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 mt-4">
@@ -138,14 +138,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 <Camera className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-white group-hover:text-brand-300 transition-colors">
-                Word & Sentence Translator
+                Core ISL Word Translator
               </h3>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                Live camera tracking for conversational ISL sentences with instant tri-lingual speech synthesis in English, Hindi, and Telugu.
+                Live camera tracking for 10 canonical Indian Sign Language vocabulary signs with instant tri-lingual speech synthesis. (Note: Continuous open-domain sentence translation is experimental).
               </p>
             </div>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-400 mt-4">
-              <span>Start Camera</span>
+              <span>Start Camera (10 Signs)</span>
               <ArrowRight className="w-3 h-3" />
             </span>
           </div>
@@ -237,6 +237,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Linguistic Standards & Architecture Disclosure */}
+      <section className="p-5 sm:p-6 rounded-3xl bg-navy-900/60 border border-slate-800 text-xs space-y-3">
+        <div className="flex items-center gap-2 text-slate-200 font-bold text-sm">
+          <BookOpen className="w-4 h-4 text-brand-400" />
+          <span>Linguistic Standards & Architecture Demarcation</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-400 leading-relaxed">
+          <div className="p-3.5 rounded-xl bg-navy-950/80 border border-slate-800/80 space-y-1.5">
+            <span className="font-semibold text-cyan-300 block">Manual Alphabet (A–Z)</span>
+            <p>
+              The primary Coordinate AI engine uses a 94-dimensional normalized biomechanical feature extractor trained on the <strong>Single-Hand Manual Alphabet (ASL / International Single-Hand Standard)</strong>. For dual-hand bimanual letters (such as M, N, P, Q, S, T), the system provides an experimental ISLRTC Bimanual mode.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-navy-950/80 border border-slate-800/80 space-y-1.5">
+            <span className="font-semibold text-indigo-300 block">Word & Gesture Translator</span>
+            <p>
+              The word recognition pipeline is powered by a PyTorch BiLSTM trained on <strong>10 canonical ISL vocabulary signs</strong> (<em>namaste, thank_you, help, yes, no, water, food, emergency, doctor, please</em>) aligned with ISLRTC curriculum standards. Open-domain continuous conversational sentence recognition is an active research baseline.
+            </p>
+          </div>
         </div>
       </section>
 

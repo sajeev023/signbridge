@@ -439,10 +439,10 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
-              Live Sign Language Translator
+              Core ISL Word Translator
             </h1>
             <p className="text-[11px] text-slate-400 hidden sm:block">
-              Camera tracking with real-time MediaPipe hand vision & regional speech.
+              10 Canonical ISL signs (ISLRTC aligned) with real-time MediaPipe hand vision & regional speech.
             </p>
           </div>
         </div>
@@ -494,6 +494,16 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
             <UploadCloud className="w-3.5 h-3.5" />
             <span>Upload</span>
           </button>
+        </div>
+      </div>
+
+      {/* Linguistic Scope Notification */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-navy-900/90 border border-brand-800/60 rounded-2xl text-xs text-slate-300">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-brand-400 shrink-0" />
+          <span>
+            <strong className="text-white">Production Vocabulary Scope:</strong> 10 Standardized ISL signs (<em>namaste, thank_you, help, yes, no, water, food, emergency, doctor, please</em>). Continuous open-domain sentence recognition is experimental.
+          </span>
         </div>
       </div>
 

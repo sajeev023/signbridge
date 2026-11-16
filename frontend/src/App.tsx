@@ -1,26 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Navbar } from './components/Navbar';
-import { LandingPage } from './pages/LandingPage';
-import { LiveISLAlphabetRecognizer } from './pages/LiveISLAlphabetRecognizer';
-import { TranslatorWorkspace } from './pages/TranslatorWorkspace';
-import { HistoryPage } from './pages/HistoryPage';
-import { VocabularyPage } from './pages/VocabularyPage';
-import { LearningPage } from './pages/LearningPage';
-import { ResearchDashboardPage } from './pages/ResearchDashboardPage';
-import { TechnicalPage } from './pages/TechnicalPage';
-import { PrivacyPage } from './pages/PrivacyPage';
-import { AboutPage } from './pages/AboutPage';
 import { SupportedLanguage } from './types';
 import { apiClient } from './services/apiClient';
 import { speechService } from './services/speechService';
-import { ShieldCheck, GitBranch } from 'lucide-react';
+import { ShieldCheck, GitBranch, Loader2 } from 'lucide-react';
+
+// Lazy-loaded page components for optimal bundle splitting
+const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
+const LiveISLAlphabetRecognizer = lazy(() => import('./pages/LiveISLAlphabetRecognizer').then(m => ({ default: m.LiveISLAlphabetRecognizer })));
+const TranslatorWorkspace = lazy(() => import('./pages/TranslatorWorkspace').then(m => ({ default: m.TranslatorWorkspace })));
+const HistoryPage = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const VocabularyPage = lazy(() => import('./pages/VocabularyPage').then(m => ({ default: m.VocabularyPage })));
+const LearningPage = lazy(() => import('./pages/LearningPage').then(m => ({ default: m.LearningPage })));
+const ResearchDashboardPage = lazy(() => import('./pages/ResearchDashboardPage').then(m => ({ default: m.ResearchDashboardPage })));
+const TechnicalPage = lazy(() => import('./pages/TechnicalPage').then(m => ({ default: m.TechnicalPage })));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
+
+const VALID_PAGES = [
+  'landing',
+  'recognizer',
+  'translator',
+  'history',
+  'vocabulary',
+  'learning',
+  'research',
+  'technical',
+  'privacy',
+  'about'
+];
+
+function getInitialPage(): string {
+  if (typeof window === 'undefined') return 'landing';
+  const hash = window.location.hash.replace('#', '').trim();
+  if (VALID_PAGES.includes(hash)) return hash;
+  const params = new URLSearchParams(window.location.search);
+  const p = params.get('page');
+  if (p && VALID_PAGES.includes(p)) return p;
+  return 'landing';
+}
+
+function PageLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-10 h-10 text-brand-400 animate-spin" />
+        <p className="text-slate-400 text-sm font-medium">Loading workspace module...</p>
+      </div>
+    </div>
+  );
+}
 
 export function App() {
-  const [currentPage, setCurrentPage] = useState<string>('landing');
+  const [currentPage, setCurrentPage] = useState<string>(getInitialPage);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
   const [practiceTargetSign, setPracticeTargetSign] = useState<string>('A');
+
+  const navigateTo = (page: string) => {
+    if (!VALID_PAGES.includes(page)) return;
+    setCurrentPage(page);
+    window.location.hash = page;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Sync hash changes on browser Back/Forward
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim();
+      if (VALID_PAGES.includes(hash)) {
+        setCurrentPage(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Check backend health on mount and periodically
   useEffect(() => {
@@ -45,7 +100,7 @@ export function App() {
 
   const handleOpenPracticeForSign = (signId: string) => {
     setPracticeTargetSign(signId);
-    setCurrentPage('learning');
+    navigateTo('learning');
   };
 
   return (
@@ -53,7 +108,7 @@ export function App() {
       {/* Top Navigation */}
       <Navbar
         currentPage={currentPage}
-        onNavigate={setCurrentPage}
+        onNavigate={navigateTo}
         selectedLanguage={selectedLanguage}
         onLanguageChange={setSelectedLanguage}
         isBackendHealthy={isBackendHealthy}
@@ -63,53 +118,55 @@ export function App() {
 
       {/* Main Page Content */}
       <main className="flex-1 pb-20 lg:pb-8">
-        {currentPage === 'landing' && (
-          <LandingPage onNavigate={setCurrentPage} />
-        )}
-        {currentPage === 'recognizer' && (
-          <LiveISLAlphabetRecognizer onNavigate={setCurrentPage} />
-        )}
-        {currentPage === 'translator' && (
-          <TranslatorWorkspace
-            selectedLanguage={selectedLanguage}
-            onLanguageChange={setSelectedLanguage}
-            isMuted={isMuted}
-            onToggleMute={handleToggleMute}
-          />
-        )}
-        {currentPage === 'history' && (
-          <HistoryPage
-            selectedLanguage={selectedLanguage}
-            isMuted={isMuted}
-          />
-        )}
-        {currentPage === 'vocabulary' && (
-          <VocabularyPage
-            onPracticeSign={handleOpenPracticeForSign}
-            selectedLanguage={selectedLanguage}
-            isMuted={isMuted}
-          />
-        )}
-        {currentPage === 'learning' && (
-          <LearningPage
-            initialSignId={practiceTargetSign}
-            selectedLanguage={selectedLanguage}
-            isMuted={isMuted}
-            onNavigate={setCurrentPage}
-          />
-        )}
-        {currentPage === 'research' && (
-          <ResearchDashboardPage />
-        )}
-        {currentPage === 'technical' && (
-          <TechnicalPage />
-        )}
-        {currentPage === 'privacy' && (
-          <PrivacyPage />
-        )}
-        {currentPage === 'about' && (
-          <AboutPage />
-        )}
+        <Suspense fallback={<PageLoadingFallback />}>
+          {currentPage === 'landing' && (
+            <LandingPage onNavigate={navigateTo} />
+          )}
+          {currentPage === 'recognizer' && (
+            <LiveISLAlphabetRecognizer onNavigate={navigateTo} />
+          )}
+          {currentPage === 'translator' && (
+            <TranslatorWorkspace
+              selectedLanguage={selectedLanguage}
+              onLanguageChange={setSelectedLanguage}
+              isMuted={isMuted}
+              onToggleMute={handleToggleMute}
+            />
+          )}
+          {currentPage === 'history' && (
+            <HistoryPage
+              selectedLanguage={selectedLanguage}
+              isMuted={isMuted}
+            />
+          )}
+          {currentPage === 'vocabulary' && (
+            <VocabularyPage
+              onPracticeSign={handleOpenPracticeForSign}
+              selectedLanguage={selectedLanguage}
+              isMuted={isMuted}
+            />
+          )}
+          {currentPage === 'learning' && (
+            <LearningPage
+              initialSignId={practiceTargetSign}
+              selectedLanguage={selectedLanguage}
+              isMuted={isMuted}
+              onNavigate={navigateTo}
+            />
+          )}
+          {currentPage === 'research' && (
+            <ResearchDashboardPage />
+          )}
+          {currentPage === 'technical' && (
+            <TechnicalPage />
+          )}
+          {currentPage === 'privacy' && (
+            <PrivacyPage />
+          )}
+          {currentPage === 'about' && (
+            <AboutPage />
+          )}
+        </Suspense>
       </main>
 
       {/* Footer */}
@@ -131,19 +188,19 @@ export function App() {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setCurrentPage('privacy')}
+              onClick={() => navigateTo('privacy')}
               className="text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               Privacy Charter
             </button>
             <button
-              onClick={() => setCurrentPage('research')}
+              onClick={() => navigateTo('research')}
               className="text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               Research & Metrics
             </button>
             <button
-              onClick={() => setCurrentPage('about')}
+              onClick={() => navigateTo('about')}
               className="text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               About

@@ -952,23 +952,32 @@ export function LiveISLAlphabetRecognizer({ onNavigate }: LiveISLAlphabetRecogni
             </div>
 
             {/* Quick Sign Convention Selector */}
-            <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur text-xs">
-              <span className="text-slate-400 font-medium">Recognition Mode:</span>
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                {(['coordinate_ai', 'auto', 'single_hand_chart', 'islrtc_bimanual'] as RecognitionMode[]).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setConvention(m)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                      convention === m
-                        ? 'bg-indigo-600 text-white shadow'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {m === 'coordinate_ai' ? 'Coordinate AI (94-D)' : m === 'auto' ? 'Auto Detect' : m === 'single_hand_chart' ? '1-Hand Chart' : '2-Hand (ISLRTC)'}
-                  </button>
-                ))}
+            <div className="space-y-2 p-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur text-xs">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <span className="text-slate-400 font-medium">Recognition Mode:</span>
+                <div className="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  {(['coordinate_ai', 'auto', 'single_hand_chart', 'islrtc_bimanual'] as RecognitionMode[]).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setConvention(m)}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        convention === m
+                          ? 'bg-indigo-600 text-white shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {m === 'coordinate_ai' ? 'Coordinate AI (Single-Hand 94-D)' : m === 'auto' ? 'Auto Detect' : m === 'single_hand_chart' ? 'Single-Hand Chart' : 'ISLRTC Dual-Hand'}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <p className="text-[11px] text-slate-500">
+                {convention === 'coordinate_ai' || convention === 'single_hand_chart'
+                  ? 'Active: 26-Letter Single-Hand Manual Alphabet (ASL / International Standard) with 94-D biomechanical normalization.'
+                  : convention === 'islrtc_bimanual'
+                  ? 'Active: ISLRTC Dual-Hand Bimanual Standard for two-handed Indian alphabet signs.'
+                  : 'Active: Automatic routing based on single vs dual-hand detection.'}
+              </p>
             </div>
           </div>
 

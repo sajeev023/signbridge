@@ -1,3 +1,4 @@
+import sys
 import json
 import time
 import tempfile
@@ -6,6 +7,14 @@ import shutil
 import uuid
 import asyncio
 from pathlib import Path
+
+# Ensure both backend directory and repo root are in sys.path regardless of execution CWD
+_backend_dir = Path(__file__).resolve().parent.parent
+_repo_root = _backend_dir.parent
+for _p in [str(_backend_dir), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware

@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const desktopNavItems = [
     { id: 'landing', label: 'Home', icon: Sparkles },
     { id: 'recognizer', label: 'Alphabet AI', icon: Camera },
-    { id: 'translator', label: 'Word Translator', icon: Radio },
+    { id: 'translator', label: 'Word Translator (10 ISL)', icon: Radio },
     { id: 'learning', label: 'Practice Studio', icon: GraduationCap },
     { id: 'vocabulary', label: 'ISL Vocabulary', icon: BookOpen },
     { id: 'history', label: 'History', icon: History },
@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     SIGNBRIDGE
                   </span>
                   <span className="px-1.5 py-0.2 text-[9px] font-bold bg-brand-950 text-brand-300 border border-brand-800 rounded tracking-wider uppercase">
-                    ISL AI
+                    ISL & Alphabet
                   </span>
                 </div>
               </div>
