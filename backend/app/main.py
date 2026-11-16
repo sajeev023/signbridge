@@ -458,12 +458,15 @@ class CoordinatePredictBody(BaseModel):
 
 @app.get("/api/coordinate/status")
 def get_coordinate_status():
-    """Returns runtime status, provider routing, and physical validation metrics of the Coordinate AI engine."""
+    """Returns runtime status, authoritative provider routing, and physical validation metrics of the Coordinate AI engine."""
     provider_name = getattr(coordinate_provider, "provider_name", "offline") if coordinate_provider else "unloaded"
-    has_nim = bool(os.getenv("AI_API_KEY"))
+    external_enabled = os.getenv("AI_INFERENCE_ENABLED", "false").lower() == "true"
+    has_nim = bool(os.getenv("AI_API_KEY")) and external_enabled
     return {
         "status": "ready" if coordinate_engine else "model_unavailable",
+        "authoritative_engine": "local_coordinate_mlp_94d",
         "provider": provider_name,
+        "external_inference_enabled": external_enabled,
         "nim_configured": has_nim,
         "input_dimension": 94,
         "raw_dimension": 63,

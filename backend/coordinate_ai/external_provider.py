@@ -1,9 +1,9 @@
 """
 SIGNBRIDGE Coordinate AI — Modular External AI Provider Interface
 Supports:
-1. LocalCoordinateProvider: High-speed, zero-cost, private on-device coordinate inference.
-2. NvidiaNimProvider: Enterprise AI inference microservice gateway via NVIDIA NIM.
-3. Automated local fallback upon network timeout or API error.
+1. LocalCoordinateProvider: Authoritative in-process, zero-cost, private on-device coordinate inference.
+2. NvidiaNimProvider: Enterprise AI inference microservice gateway via NVIDIA NIM / Triton.
+3. Automated local fallback upon network timeout, contract incompatibility, or API error.
 4. Comprehensive request/response validation, latency logging, and error tracking.
 """
 
@@ -32,6 +32,12 @@ except ImportError:
         if default is ...:
             return None
         return default
+
+
+VALID_COORDINATE_CLASSES = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y"
+]
 
 
 class CoordinateInferenceRequest(BaseModel):
@@ -73,8 +79,8 @@ class BaseAIProvider(ABC):
 
 class LocalCoordinateProvider(BaseAIProvider):
     """
-    Default in-process local inference provider.
-    Zero network latency, 100% offline, privacy-first.
+    Authoritative default in-process inference provider.
+    Zero network latency, 100% offline, privacy-first, 94-D biomechanical CoordinateMLP.
     """
     def __init__(self, inference_engine):
         self.engine = inference_engine
@@ -125,8 +131,15 @@ class LocalCoordinateProvider(BaseAIProvider):
 class NvidiaNimProvider(BaseAIProvider):
     """
     NVIDIA NIM (Inference Microservice) Gateway.
-    Sends structured numerical coordinate tensors or prompts to NVIDIA NIM container / cloud endpoint.
-    Automatically falls back to local engine on failure.
+    
+    INFERENCE CONTRACT REQUIREMENT:
+    Any external remote provider MUST host our custom 94-D CoordinateMLP model
+    (or an exported TensorRT/Triton equivalent) accepting 94-D numerical biomechanical
+    tensors and returning calibrated class probabilities over the 24 classes.
+    
+    Generic chat/completions endpoints and text/vision LLMs (e.g. LLaMA, GPT, vision-instruct)
+    are fundamentally incompatible with the CoordinateMLP contract. Such endpoints are rejected
+    upfront and routed to authoritative local inference with fallback telemetry.
     """
     def __init__(
         self,
@@ -148,40 +161,65 @@ class NvidiaNimProvider(BaseAIProvider):
         self.failed_requests = 0
         self.total_latency_ms = 0.0
 
+    def is_contract_compatible(self) -> bool:
+        """
+        Verifies whether the configured endpoint supports the 94-D CoordinateMLP tensor contract.
+        Chat/completions endpoints and text/vision LLMs are incompatible.
+        """
+        incompatible_tokens = ["llama", "gpt", "vision-instruct", "mistral", "qwen", "chat/completions"]
+        m_lower = (self.model_name or "").lower()
+        u_lower = (self.base_url or "").lower()
+        if any(tok in m_lower or tok in u_lower for tok in incompatible_tokens):
+            return False
+        return True
+
     def health_check(self) -> bool:
-        return bool(self.api_key and self.base_url)
+        return bool(self.api_key and self.base_url and self.is_contract_compatible())
 
     def predict(self, request: CoordinateInferenceRequest) -> CoordinateInferenceResponse:
         self.total_requests += 1
         t0 = time.perf_counter()
 
-        # If external inference is disabled or unconfigured, route to local provider
+        # 1. If external inference is disabled or unconfigured, route immediately to local provider
         if not self.api_key or os.getenv("AI_INFERENCE_ENABLED", "false").lower() != "true":
             resp = self.local_fallback.predict(request)
             resp.provider_name = "local_coordinate_engine (external disabled)"
             return resp
 
-        # Formulate structured coordinate payload
+        # 2. Block incompatible text/chat endpoints from receiving truncated coordinate queries
+        if not self.is_contract_compatible():
+            self.failed_requests += 1
+            fallback_res = self.local_fallback.predict(request)
+            fallback_res.fallback_used = True
+            fallback_res.error_message = (
+                f"Incompatible remote provider contract: Configured model '{self.model_name}' "
+                "is a text/chat foundation LLM and does not host the custom 94-D CoordinateMLP model. "
+                "Enforcing authoritative local inference."
+            )
+            fallback_res.provider_name = "local_coordinate_engine (fallback: contract mismatch)"
+            return fallback_res
+
+        # 3. For a compatible remote Triton / NIM numerical tensor endpoint:
+        # Pass the full 94-D enriched features
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         payload = {
-            "model": self.model_name,
-            "messages": [
+            "inputs": [
                 {
-                    "role": "user",
-                    "content": f"ASL Landmark Coordinate Vector (63 values): {request.raw_coordinates_63[:10]}..."
+                    "name": "enriched_features_94",
+                    "shape": [1, 94],
+                    "datatype": "FP32",
+                    "data": request.enriched_features_94 or request.raw_coordinates_63
                 }
-            ],
-            "max_tokens": 16,
-            "temperature": 0.1
+            ]
         }
 
         try:
             import urllib.request
             req = urllib.request.Request(
-                f"{self.base_url}/chat/completions",
+                f"{self.base_url}/v2/models/{self.model_name}/infer",
                 data=json.dumps(payload).encode("utf-8"),
                 headers=headers,
                 method="POST"
@@ -191,23 +229,46 @@ class NvidiaNimProvider(BaseAIProvider):
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0
                 self.total_latency_ms += elapsed_ms
 
-                # Parse and validate response
-                content = body["choices"][0]["message"]["content"].strip().upper()
-                predicted = content[0] if content else "REJECTED"
+                # Parse numerical probabilities from tensor output
+                outputs = {o["name"]: o["data"] for o in body.get("outputs", [])}
+                probs = outputs.get("probabilities", [])
+
+                if not probs or len(probs) != len(VALID_COORDINATE_CLASSES):
+                    raise ValueError(f"Malformed remote tensor output: expected {len(VALID_COORDINATE_CLASSES)} class probabilities.")
+
+                import numpy as np
+                probs_arr = np.array(probs, dtype=np.float32)
+                top_idx = int(np.argmax(probs_arr))
+                predicted = VALID_COORDINATE_CLASSES[top_idx]
+                confidence = float(probs_arr[top_idx])
+
+                # Strictly enforce calibrated confidence rejection threshold
+                is_accepted = (confidence >= request.confidence_threshold)
+                if not is_accepted:
+                    predicted = "REJECTED"
+
+                sorted_indices = np.argsort(probs_arr)[::-1][:3]
+                candidates = [
+                    CandidatePrediction(
+                        letter=VALID_COORDINATE_CLASSES[i],
+                        confidence=round(float(probs_arr[i]), 4)
+                    )
+                    for i in sorted_indices
+                ]
 
                 return CoordinateInferenceResponse(
                     provider_name=self.provider_name,
                     predicted_letter=predicted,
-                    confidence=0.92,
-                    is_accepted=True,
-                    top_candidates=[CandidatePrediction(letter=predicted, confidence=0.92)],
+                    confidence=round(confidence, 4),
+                    is_accepted=is_accepted,
+                    top_candidates=candidates,
                     latency_ms=round(elapsed_ms, 2),
                     fallback_used=False
                 )
 
         except Exception as e:
             self.failed_requests += 1
-            # Seamless fallback to local engine
+            # Seamless fallback to authoritative local engine
             fallback_res = self.local_fallback.predict(request)
             fallback_res.fallback_used = True
             fallback_res.error_message = f"NVIDIA NIM error ({type(e).__name__}): {str(e)[:120]}. Routed to local engine."
@@ -222,6 +283,8 @@ class ProviderFactory:
         local_provider = LocalCoordinateProvider(local_engine)
         provider_type = os.getenv("AI_PROVIDER", "local").lower()
 
+        # Incompatible remote NIM routing is disabled by default.
+        # If explicitly selected, NvidiaNimProvider validates the contract and falls back to local_provider.
         if provider_type == "nvidia_nim":
             return NvidiaNimProvider(local_fallback_provider=local_provider)
         return local_provider

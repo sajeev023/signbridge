@@ -100,10 +100,12 @@ def run_acceptance_audit():
     assert r_coord_status.status_code == 200
     cs_data = r_coord_status.json()
     assert cs_data["status"] == "ready"
+    assert cs_data["authoritative_engine"] == "local_coordinate_mlp_94d"
+    assert cs_data["nim_configured"] is False
     assert cs_data["input_dimension"] == 94
     assert cs_data["raw_dimension"] == 63
     assert cs_data["num_classes"] == 24
-    print(f"  [PASS] /api/coordinate/status: ready, 94-D input, {cs_data['num_classes']} classes")
+    print(f"  [PASS] /api/coordinate/status: ready, authoritative_engine={cs_data['authoritative_engine']}, nim_configured={cs_data['nim_configured']}, {cs_data['num_classes']} classes")
 
     # 2d. /api/coordinate/model-info
     r_coord_info = client.get("/api/coordinate/model-info")
