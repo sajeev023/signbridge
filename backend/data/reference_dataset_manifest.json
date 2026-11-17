@@ -1,0 +1,63 @@
+{
+  "dataset_name": "SIGNBRIDGE Reference-Driven Biomechanical Alphabet Dataset",
+  "version": "2.1.0-reference-driven",
+  "reference_image": {
+    "title": "AMERICAN SIGN LANGUAGE ALPHABET",
+    "source": "G\u00e9rard Aflague Collection",
+    "file": "backend/data/reference/asl_alphabet_reference_chart.jpg",
+    "resolution": [
+      772,
+      1024
+    ]
+  },
+  "classes": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y"
+  ],
+  "num_classes": 24,
+  "total_samples": 3906,
+  "provenance_breakdown": {
+    "ORIGINAL_USER_REFERENCE_TEMPLATE": 24,
+    "SYNTHETIC_CONTROLLED_AUGMENTATION": 3840,
+    "GENUINE_HUMAN_CAMERA_OBSERVATION": 42
+  },
+  "split_counts": {
+    "train": 2712,
+    "val": 576,
+    "test": 576,
+    "physical_test": 42
+  },
+  "feature_schema": {
+    "version": "2.1.0-coordinate-ai-94d",
+    "dimension": 94,
+    "components": [
+      "63 wrist-relative normalized 3D coordinates",
+      "10 interior 3D articulation joint angles",
+      "5 fingertip-to-wrist curl ratios",
+      "10 pairwise inter-fingertip distances",
+      "6 palm orientation & longitudinal unit vectors"
+    ]
+  }
+}

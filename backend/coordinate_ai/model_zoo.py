@@ -157,6 +157,15 @@ class CoordinateInferenceEngine:
 
     def predict_features(self, features: np.ndarray) -> Dict[str, Any]:
         """Executes forward pass given numerical coordinate feature vector."""
+        if features is None or len(features) < ENRICHED_FEATURE_DIM or np.linalg.norm(features) < 1e-4:
+            return {
+                "predicted_letter": "REJECTED",
+                "best_candidate": None,
+                "confidence": 0.0,
+                "is_accepted": False,
+                "top_candidates": [],
+                "probabilities": {c: 0.0 for c in self.classes}
+            }
         # Layer 1
         h1 = features @ self.w1.T + self.b1
         h1 = self._layer_norm(h1, self.g1, self.bet1)
