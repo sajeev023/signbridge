@@ -21,8 +21,8 @@ from typing import Dict, List, Optional, Any
 
 class AIAssistanceService:
     def __init__(self):
-        # Automatically load .env if present and environment variables not yet populated
-        if "NVIDIA_API_KEY" not in os.environ and "AI_API_KEY" not in os.environ:
+        # Automatically load .env once if present and not yet loaded
+        if "SIGNBRIDGE_ENV_LOADED" not in os.environ:
             from pathlib import Path
             root_dir = Path(__file__).resolve().parent.parent.parent.parent
             for env_path in [root_dir / ".env", root_dir / "backend" / ".env"]:
@@ -38,6 +38,7 @@ class AIAssistanceService:
                                         os.environ[k] = v
                     except Exception:
                         pass
+            os.environ["SIGNBRIDGE_ENV_LOADED"] = "1"
 
         # Priority: NVIDIA_API_KEY takes precedence for NVIDIA NIM cloud AI integration
         nvidia_key = os.getenv("NVIDIA_API_KEY", "").strip()

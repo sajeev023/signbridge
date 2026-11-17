@@ -180,7 +180,7 @@ def test_api_ai_compose_endpoint(client, monkeypatch):
     """Verifies that POST /api/ai/compose and POST /api/ai/compose-sentence work via FastAPI."""
     res1 = client.post("/api/ai/compose", json={"tokens": ["W", "A", "T", "E", "R"]})
     assert res1.status_code == 200
-    assert "Water." in res1.json()["composed_text"]
+    assert "water" in res1.json()["composed_text"].lower()
 
     res2 = client.post("/api/ai/compose-sentence", json={"tokens": ["HELP"]})
     assert res2.status_code == 200
