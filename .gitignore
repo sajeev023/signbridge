@@ -35,6 +35,12 @@ frontend/dist/
 .eslintcache
 *.tsbuildinfo
 
+# Environments and Secrets
+.env
+.env.local
+.env.*.local
+*.env
+
 # IDE & OS
 .vscode/
 .idea/
