@@ -731,6 +731,7 @@ class CoachBody(BaseModel):
     joint_metrics: Dict[str, Any]
 
 @app.post("/api/ai/compose")
+@app.post("/api/ai/compose-sentence")
 def ai_compose(payload: ComposeBody):
     """Transforms a sequence of recognized signs or letters into natural prose."""
     return ai_assistance_service.compose_sentence(payload.tokens, payload.target_language or "en")

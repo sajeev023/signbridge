@@ -21,10 +21,29 @@ from typing import Dict, List, Optional, Any
 
 class AIAssistanceService:
     def __init__(self):
-        self.provider = os.getenv("AI_ASSIST_PROVIDER", "local").lower()
-        self.api_key = os.getenv("AI_API_KEY", "")
-        self.base_url = os.getenv("AI_BASE_URL", "")
-        self.model = os.getenv("AI_MODEL", "gemini-1.5-flash")
+        # Priority: NVIDIA_API_KEY takes precedence for NVIDIA NIM cloud AI integration
+        nvidia_key = os.getenv("NVIDIA_API_KEY", "").strip()
+        generic_key = os.getenv("AI_API_KEY", "").strip()
+        self.api_key = nvidia_key or generic_key
+
+        explicit_provider = os.getenv("AI_ASSIST_PROVIDER", "").lower().strip()
+        if explicit_provider:
+            self.provider = explicit_provider
+        elif nvidia_key:
+            self.provider = "nvidia_nim"
+        elif generic_key:
+            self.provider = "gemini"
+        else:
+            self.provider = "local"
+
+        if self.provider == "nvidia_nim":
+            self.base_url = os.getenv("NVIDIA_BASE_URL") or os.getenv("AI_BASE_URL") or "https://integrate.api.nvidia.com/v1"
+            # Prioritize compact open-weights models (<= 30B) on NVIDIA NIM catalog
+            self.model = os.getenv("NVIDIA_MODEL") or os.getenv("AI_MODEL") or "qwen/qwen2.5-7b-instruct"
+        else:
+            self.base_url = os.getenv("AI_BASE_URL", "")
+            self.model = os.getenv("AI_MODEL", "gemini-1.5-flash")
+
         self.timeout_sec = float(os.getenv("AI_TIMEOUT_SEC", "3.0"))
         
         # Telemetry
@@ -58,6 +77,7 @@ class AIAssistanceService:
             "active_provider": self.provider if is_cloud_ready else "local_deterministic_engine",
             "cloud_configured": is_cloud_ready,
             "model": self.model if is_cloud_ready else "local_rule_engine_v2.1",
+            "api_key_configured": bool(self.api_key),
             "capabilities": [
                 "sentence_composition",
                 "ambiguity_resolution",
@@ -103,12 +123,33 @@ class AIAssistanceService:
                 self.cloud_requests += 1
                 result["latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
                 return result
+            except urllib.error.HTTPError as he:
+                self.errors += 1
+                self.fallback_requests += 1
+                local_res = self._local_compose(tokens, target_language)
+                local_res["fallback_used"] = True
+                if he.code == 429:
+                    local_res["fallback_reason"] = "Cloud provider rate limit exceeded (HTTP 429). Falling back to local engine."
+                elif he.code in (401, 403):
+                    local_res["fallback_reason"] = f"Cloud provider authentication failed (HTTP {he.code}). Invalid API credentials."
+                else:
+                    local_res["fallback_reason"] = f"Cloud provider HTTP error {he.code}. Falling back to local engine."
+                local_res["latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
+                return local_res
+            except urllib.error.URLError as ue:
+                self.errors += 1
+                self.fallback_requests += 1
+                local_res = self._local_compose(tokens, target_language)
+                local_res["fallback_used"] = True
+                local_res["fallback_reason"] = "Cloud network timeout or connection error. Falling back to local engine."
+                local_res["latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
+                return local_res
             except Exception as e:
                 self.errors += 1
                 self.fallback_requests += 1
                 local_res = self._local_compose(tokens, target_language)
                 local_res["fallback_used"] = True
-                local_res["fallback_reason"] = f"Cloud provider failed: {str(e)[:80]}"
+                local_res["fallback_reason"] = f"Cloud provider error ({type(e).__name__}). Falling back to local engine."
                 local_res["latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
                 return local_res
 
@@ -287,7 +328,8 @@ class AIAssistanceService:
             default_model = "gpt-4o-mini"
             if self.provider == "nvidia_nim":
                 default_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-                default_model = "meta/llama-3.1-70b-instruct"
+                # Default to compact Qwen 2.5 7B open-weights model on NVIDIA NIM
+                default_model = "qwen/qwen2.5-7b-instruct"
             elif self.provider == "ollama":
                 default_url = "http://localhost:11434/v1/chat/completions"
                 default_model = "llama3"
@@ -311,14 +353,34 @@ class AIAssistanceService:
             with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 content = data["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
+                parsed = self._extract_json(content)
                 return {
-                    "composed_text": parsed.get("composed_text", str(content)),
+                    "composed_text": parsed.get("composed_text", str(content).strip()),
                     "source_tokens": tokens,
                     "target_language": target_language,
                     "provider": f"cloud_{self.provider}",
+                    "model_used": model_name,
                     "fallback_used": False
                 }
+
+    @staticmethod
+    def _extract_json(text: str) -> Dict[str, Any]:
+        """Safely extracts and parses JSON even when wrapped in markdown code fences."""
+        s = text.strip()
+        if "```" in s:
+            start = s.find("{")
+            end = s.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                s = s[start:end+1]
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, dict):
+                return parsed
+            return {"composed_text": str(parsed)}
+        except Exception:
+            # Fallback to cleaning up raw text if JSON decoder fails
+            cleaned = text.replace("```json", "").replace("```", "").strip()
+            return {"composed_text": cleaned}
 
 
     def resolve_ambiguity(

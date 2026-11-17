@@ -150,9 +150,9 @@ class NvidiaNimProvider(BaseAIProvider):
         timeout_ms: int = 2000
     ):
         self.local_fallback = local_fallback_provider
-        self.api_key = api_key or os.getenv("AI_API_KEY", "")
-        self.base_url = base_url or os.getenv("AI_BASE_URL", "https://integrate.api.nvidia.com/v1")
-        self.model_name = model_name or os.getenv("AI_MODEL", "meta/llama-3.2-11b-vision-instruct")
+        self.api_key = api_key or os.getenv("NVIDIA_API_KEY") or os.getenv("AI_API_KEY", "")
+        self.base_url = base_url or os.getenv("NVIDIA_BASE_URL") or os.getenv("AI_BASE_URL", "https://integrate.api.nvidia.com/v1")
+        self.model_name = model_name or os.getenv("NVIDIA_MODEL") or os.getenv("AI_MODEL", "qwen/qwen2.5-7b-instruct")
         self.timeout_sec = max(0.05, timeout_ms / 1000.0)
         self.provider_name = "nvidia_nim"
 
