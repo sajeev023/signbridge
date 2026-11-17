@@ -97,6 +97,7 @@ class PracticePayload(BaseModel):
     right_hand: Optional[List[Dict[str, float]]] = None
     pose: Optional[List[Dict[str, float]]] = None
 
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {
