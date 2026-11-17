@@ -15,8 +15,10 @@ import {
   ArrowRight,
   Hand,
   RefreshCw,
-  Eye
+  Eye,
+  FlipHorizontal
 } from 'lucide-react';
+
 import { 
   PredictionResult, 
   SupportedLanguage, 
@@ -53,6 +55,8 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isModelLoading, setIsModelLoading] = useState<boolean>(false);
   const [detectedHandsCount, setDetectedHandsCount] = useState<number>(0);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+
 
   // Video Upload State
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
@@ -164,7 +168,7 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   // -------------------------------------------------------------
   // MODE B: LIVE CAMERA PIPELINE (CLIENT VISION VIA MEDIAPIPE)
   // -------------------------------------------------------------
-  const startCamera = async () => {
+  const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
     setCameraError(null);
     stopDemo();
     setIsModelLoading(true);
@@ -182,7 +186,7 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
         video: { 
           width: { ideal: 640 }, 
           height: { ideal: 480 }, 
-          facingMode: 'user' 
+          facingMode: { ideal: mode } 
         },
         audio: false
       });
@@ -190,6 +194,8 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
       streamRef.current = stream;
       if (liveVideoRef.current) {
         liveVideoRef.current.srcObject = stream;
+        liveVideoRef.current.setAttribute('playsinline', 'true');
+        liveVideoRef.current.setAttribute('webkit-playsinline', 'true');
         await liveVideoRef.current.play();
       }
       setIsCameraActive(true);
@@ -206,6 +212,16 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
       }
     }
   };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    if (isCameraActive) {
+      stopCamera();
+      setTimeout(() => startCamera(nextMode), 150);
+    }
+  };
+
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -599,6 +615,18 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
                   </div>
                 )}
 
+                {/* Mobile Camera Switch Floating Button */}
+                {isCameraActive && (
+                  <button
+                    onClick={toggleFacingMode}
+                    className="absolute bottom-3 right-3 p-2.5 rounded-full bg-navy-950/85 hover:bg-navy-900 border border-navy-700 text-brand-400 shadow-lg active:scale-95 transition-transform z-10"
+                    title="Switch Front/Rear Camera"
+                  >
+                    <FlipHorizontal className="w-4 h-4" />
+                  </button>
+                )}
+
+
                 {/* Reticle guide when hands not detected */}
                 {isCameraActive && detectedHandsCount === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6 text-center">
@@ -626,7 +654,7 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
                     </div>
 
                     <button
-                      onClick={startCamera}
+                      onClick={() => startCamera(facingMode)}
                       disabled={isModelLoading}
                       className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm shadow-glow transition-all transform active:scale-95 flex items-center gap-2"
                     >

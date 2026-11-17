@@ -16,11 +16,13 @@ const ResearchDashboardPage = lazy(() => import('./pages/ResearchDashboardPage')
 const TechnicalPage = lazy(() => import('./pages/TechnicalPage').then(m => ({ default: m.TechnicalPage })));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
+const MobileCameraTestPage = lazy(() => import('./pages/MobileCameraTestPage').then(m => ({ default: m.MobileCameraTestPage })));
 
 const VALID_PAGES = [
   'landing',
   'recognizer',
   'translator',
+  'mobile',
   'history',
   'vocabulary',
   'learning',
@@ -29,6 +31,7 @@ const VALID_PAGES = [
   'privacy',
   'about'
 ];
+
 
 function getInitialPage(): string {
   if (typeof window === 'undefined') return 'landing';
@@ -133,6 +136,10 @@ export function App() {
               onToggleMute={handleToggleMute}
             />
           )}
+          {currentPage === 'mobile' && (
+            <MobileCameraTestPage />
+          )}
+
           {currentPage === 'history' && (
             <HistoryPage
               selectedLanguage={selectedLanguage}

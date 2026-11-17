@@ -11,8 +11,10 @@ import {
   Sparkles,
   BarChart3,
   ShieldCheck,
-  Camera
+  Camera,
+  Smartphone
 } from 'lucide-react';
+
 import { SupportedLanguage } from '../types';
 
 interface NavbarProps {
@@ -38,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'landing', label: 'Home', icon: Sparkles },
     { id: 'recognizer', label: 'Alphabet AI', icon: Camera },
     { id: 'translator', label: 'Word Translator (10 ISL)', icon: Radio },
+    { id: 'mobile', label: 'Mobile Test', icon: Smartphone },
     { id: 'learning', label: 'Practice Studio', icon: GraduationCap },
     { id: 'vocabulary', label: 'ISL Vocabulary', icon: BookOpen },
     { id: 'history', label: 'History', icon: History },
@@ -49,9 +52,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'landing', label: 'Home', icon: Sparkles },
     { id: 'recognizer', label: 'Alphabet', icon: Camera },
     { id: 'translator', label: 'Words', icon: Radio },
+    { id: 'mobile', label: 'Mobile Test', icon: Smartphone },
     { id: 'learning', label: 'Practice', icon: GraduationCap },
     { id: 'history', label: 'History', icon: History },
   ];
+
 
   return (
     <>

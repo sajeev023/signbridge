@@ -96,7 +96,8 @@ class AIAssistanceService:
             }
 
         # Check if cloud provider is available and configured
-        if self.provider in ["openai", "gemini", "anthropic", "generic_llm"] and self.api_key:
+        supported_cloud = ["openai", "gemini", "anthropic", "claude", "ollama", "nvidia_nim", "generic_llm"]
+        if self.provider in supported_cloud and self.api_key:
             try:
                 result = self._cloud_compose(tokens, target_language)
                 self.cloud_requests += 1
@@ -110,6 +111,7 @@ class AIAssistanceService:
                 local_res["fallback_reason"] = f"Cloud provider failed: {str(e)[:80]}"
                 local_res["latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
                 return local_res
+
 
         # Fallback to local rule-based composition
         self.fallback_requests += 1
@@ -218,44 +220,106 @@ class AIAssistanceService:
         }
 
     def _cloud_compose(self, tokens: List[str], target_language: str) -> Dict[str, Any]:
-        """Calls external cloud LLM endpoint if configured."""
+        """Calls external cloud LLM endpoint (Gemini, Claude, OpenAI, Ollama, NVIDIA NIM)."""
         prompt = (
             f"You are the SIGNBRIDGE assistive translation engine. "
             f"Convert this sequence of recognized sign tokens: {tokens} "
             f"into one polite, fluent, natural sentence in language '{target_language}'. "
             f"Return ONLY a JSON object with key 'composed_text'."
         )
-        url = self.base_url or "https://api.openai.com/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        body = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": "You are a sign language sentence composer. Return JSON only."},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.2,
-            "max_tokens": 128
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(body).encode("utf-8"),
-            headers=headers,
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            content = data["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
-            return {
-                "composed_text": parsed.get("composed_text", str(content)),
-                "source_tokens": tokens,
-                "target_language": target_language,
-                "provider": f"cloud_{self.provider}",
-                "fallback_used": False
+
+        # 1. Google Gemini Native API
+        if self.provider == "gemini":
+            model_name = self.model or "gemini-1.5-flash"
+            url = self.base_url or f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+            headers = {"Content-Type": "application/json"}
+            body = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "responseMimeType": "application/json"
+                }
             }
+            req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text_out = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(text_out)
+                return {
+                    "composed_text": parsed.get("composed_text", str(text_out)),
+                    "source_tokens": tokens,
+                    "target_language": target_language,
+                    "provider": "cloud_gemini",
+                    "fallback_used": False
+                }
+
+        # 2. Anthropic Claude Native Messages API
+        elif self.provider in ["anthropic", "claude"]:
+            model_name = self.model or "claude-3-5-haiku-20241022"
+            url = self.base_url or "https://api.anthropic.com/v1/messages"
+            headers = {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            body = {
+                "model": model_name,
+                "max_tokens": 128,
+                "system": "You are a sign language sentence composer. Return JSON only with key 'composed_text'.",
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text_out = data["content"][0]["text"]
+                parsed = json.loads(text_out)
+                return {
+                    "composed_text": parsed.get("composed_text", str(text_out)),
+                    "source_tokens": tokens,
+                    "target_language": target_language,
+                    "provider": "cloud_anthropic",
+                    "fallback_used": False
+                }
+
+        # 3. OpenAI, NVIDIA NIM, Ollama, and generic OpenAI-compatible endpoints
+        else:
+            default_url = "https://api.openai.com/v1/chat/completions"
+            default_model = "gpt-4o-mini"
+            if self.provider == "nvidia_nim":
+                default_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+                default_model = "meta/llama-3.1-70b-instruct"
+            elif self.provider == "ollama":
+                default_url = "http://localhost:11434/v1/chat/completions"
+                default_model = "llama3"
+
+            url = self.base_url or default_url
+            model_name = self.model or default_model
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            body = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": "You are a sign language sentence composer. Return JSON only with key 'composed_text'."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2,
+                "max_tokens": 128
+            }
+            req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                return {
+                    "composed_text": parsed.get("composed_text", str(content)),
+                    "source_tokens": tokens,
+                    "target_language": target_language,
+                    "provider": f"cloud_{self.provider}",
+                    "fallback_used": False
+                }
+
 
     def resolve_ambiguity(
         self,
