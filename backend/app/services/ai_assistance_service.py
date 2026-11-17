@@ -21,6 +21,24 @@ from typing import Dict, List, Optional, Any
 
 class AIAssistanceService:
     def __init__(self):
+        # Automatically load .env if present and environment variables not yet populated
+        if "NVIDIA_API_KEY" not in os.environ and "AI_API_KEY" not in os.environ:
+            from pathlib import Path
+            root_dir = Path(__file__).resolve().parent.parent.parent.parent
+            for env_path in [root_dir / ".env", root_dir / "backend" / ".env"]:
+                if env_path.exists():
+                    try:
+                        with open(env_path, "r", encoding="utf-8") as f:
+                            for line in f:
+                                line = line.strip()
+                                if line and not line.startswith("#") and "=" in line:
+                                    k, v = line.split("=", 1)
+                                    k, v = k.strip(), v.strip().strip("'\"")
+                                    if k and k not in os.environ:
+                                        os.environ[k] = v
+                    except Exception:
+                        pass
+
         # Priority: NVIDIA_API_KEY takes precedence for NVIDIA NIM cloud AI integration
         nvidia_key = os.getenv("NVIDIA_API_KEY", "").strip()
         generic_key = os.getenv("AI_API_KEY", "").strip()
@@ -44,7 +62,7 @@ class AIAssistanceService:
             self.base_url = os.getenv("AI_BASE_URL", "")
             self.model = os.getenv("AI_MODEL", "gemini-1.5-flash")
 
-        self.timeout_sec = float(os.getenv("AI_TIMEOUT_SEC", "3.0"))
+        self.timeout_sec = float(os.getenv("AI_TIMEOUT_SEC", "5.0"))
         
         # Telemetry
         self.total_requests = 0
@@ -334,7 +352,10 @@ class AIAssistanceService:
                 default_url = "http://localhost:11434/v1/chat/completions"
                 default_model = "llama3"
 
-            url = self.base_url or default_url
+            if self.base_url:
+                url = self.base_url if self.base_url.endswith("/chat/completions") else f"{self.base_url.rstrip('/')}/chat/completions"
+            else:
+                url = default_url
             model_name = self.model or default_model
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -352,7 +373,8 @@ class AIAssistanceService:
             req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
             with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                content = data["choices"][0]["message"]["content"]
+                msg = data["choices"][0]["message"]
+                content = msg.get("content") or msg.get("reasoning_content") or ""
                 parsed = self._extract_json(content)
                 return {
                     "composed_text": parsed.get("composed_text", str(content).strip()),
