@@ -144,3 +144,6 @@ export interface ModelMetadata {
   };
   vocabulary: string[];
 }
+
+export * from './dataContracts';
+

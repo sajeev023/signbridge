@@ -122,21 +122,28 @@ class LandmarkExtractor:
                     pose_arr[idx] = [pt.get('x', 0.0), pt.get('y', 0.0), pt.get('z', 0.0)]
 
         # Determine reference anchor center and scale factor
-        # Preferred: midpoint of left and right shoulders (indices 1 & 2 in pose_arr)
+        # Aligned to canonical training distribution (mean shoulder span = 0.60, mean palm span = 0.035)
+        CANONICAL_SHOULDER_DIST = 0.60
+        CANONICAL_PALM_SPAN = 0.035
+
         if has_pose and np.linalg.norm(pose_arr[1] - pose_arr[2]) > 0.02:
+            raw_shoulder = np.linalg.norm(pose_arr[1] - pose_arr[2])
             center = (pose_arr[1] + pose_arr[2]) / 2.0
-            scale = np.linalg.norm(pose_arr[1] - pose_arr[2])
+            scale = raw_shoulder / CANONICAL_SHOULDER_DIST
         elif has_lh and has_rh:
             # Fallback to midpoint of both wrists
             center = (lh_arr[0] + rh_arr[0]) / 2.0
-            scale = max(np.linalg.norm(lh_arr[0] - rh_arr[0]), 0.1)
+            raw_span = max(float(np.linalg.norm(rh_arr[9] - rh_arr[0])), float(np.linalg.norm(lh_arr[9] - lh_arr[0])), 0.04)
+            scale = raw_span / CANONICAL_PALM_SPAN
         elif has_rh:
-            # Single right hand: center on wrist, scale on palm span
+            # Single right hand: center on wrist, scale on canonical palm span
             center = rh_arr[0]
-            scale = max(np.linalg.norm(rh_arr[9] - rh_arr[0]), 0.08)
+            raw_span = max(float(np.linalg.norm(rh_arr[9] - rh_arr[0])), 0.04)
+            scale = raw_span / CANONICAL_PALM_SPAN
         elif has_lh:
             center = lh_arr[0]
-            scale = max(np.linalg.norm(lh_arr[9] - lh_arr[0]), 0.08)
+            raw_span = max(float(np.linalg.norm(lh_arr[9] - lh_arr[0])), 0.04)
+            scale = raw_span / CANONICAL_PALM_SPAN
         else:
             center = np.zeros(3, dtype=np.float32)
             scale = 1.0

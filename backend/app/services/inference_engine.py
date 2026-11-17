@@ -43,6 +43,7 @@ class InferenceEngine:
         self.buffer = deque(maxlen=SEQUENCE_LENGTH)
         self.recent_predictions = deque(maxlen=CONSECUTIVE_STABILITY_FRAMES)
         self.last_confirmed_sign = None
+        self.consecutive_drops = 0
         self.vocabulary_lookup = {item["id"]: item for item in VOCABULARY_LIST}
 
     def reset_buffer(self):
@@ -50,6 +51,7 @@ class InferenceEngine:
         self.buffer.clear()
         self.recent_predictions.clear()
         self.last_confirmed_sign = None
+        self.consecutive_drops = 0
 
     def push_landmarks(
         self,
@@ -60,26 +62,42 @@ class InferenceEngine:
         """
         Receives per-frame raw landmark dictionaries, normalizes coordinates,
         appends to sliding window buffer, and evaluates prediction if window is saturated.
+        Provides 3-frame drop interpolation to prevent tracking flutter.
         """
-        # Normalize incoming frame
-        features = self.extractor.normalize_landmarks(left_hand, right_hand, pose)
-        self.buffer.append(features)
-
-        # Check if hands are present
         has_hands = (left_hand is not None and len(left_hand) > 0) or (right_hand is not None and len(right_hand) > 0)
+
+        if not has_hands:
+            self.consecutive_drops += 1
+            if self.consecutive_drops <= 3 and len(self.buffer) > 0:
+                # Interpolate last known posture to prevent sudden temporal stutter
+                features = self.buffer[-1].copy()
+                effective_has_hands = True
+            else:
+                features = self.extractor.normalize_landmarks(None, None, pose)
+                effective_has_hands = False
+        else:
+            self.consecutive_drops = 0
+            features = self.extractor.normalize_landmarks(left_hand, right_hand, pose)
+            effective_has_hands = True
+
+        self.buffer.append(features)
 
         # If buffer is still filling
         if len(self.buffer) < SEQUENCE_LENGTH:
             return {
                 "status": "buffering",
+                "is_accepted": False,
+                "predicted_sign": "BUFFERING",
                 "buffer_fill": len(self.buffer) / SEQUENCE_LENGTH,
                 "buffer_count": len(self.buffer),
-                "has_hands": has_hands,
+                "has_hands": effective_has_hands,
+                "confidence": 0.0,
+                "latency_ms": 0.0,
                 "message": f"Buffering gesture motion ({len(self.buffer)}/{SEQUENCE_LENGTH} frames)..."
             }
 
         # Buffer is saturated: perform inference
-        return self._predict_window(has_hands)
+        return self._predict_window(effective_has_hands)
 
     def _predict_window(self, has_hands: bool) -> Dict[str, Any]:
         """Runs forward pass on current buffer."""
@@ -120,8 +138,10 @@ class InferenceEngine:
         if confidence < CONFIDENCE_THRESHOLD:
             return {
                 "status": "uncertain",
-                "confidence": confidence,
-                "predicted_sign": pred_class,
+                "is_accepted": False,
+                "confidence": round(confidence, 4),
+                "sign_id": pred_class,
+                "predicted_sign": "UNCERTAIN",
                 "threshold": CONFIDENCE_THRESHOLD,
                 "message": UNCERTAIN_FALLBACK_TEXT,
                 "latency_ms": round(latency_ms, 2),
@@ -140,10 +160,12 @@ class InferenceEngine:
         return {
             "status": "recognized" if stable else "evaluating",
             "is_stable": stable,
+            "is_accepted": stable,
             "sign_id": pred_class,
+            "predicted_sign": pred_class if stable else "EVALUATING",
             "label": metadata.get("label", pred_class),
             "category": metadata.get("category", "general"),
-            "confidence": confidence,
+            "confidence": round(confidence, 4),
             "translations": metadata.get("translations", {
                 "en": metadata.get("label", pred_class)
             }),

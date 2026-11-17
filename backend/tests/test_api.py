@@ -198,3 +198,73 @@ def test_coordinate_predict_endpoint_raw_and_landmarks():
     assert "latency_ms" in d2
 
 
+def test_ai_assistance_endpoints():
+    # 1. Status
+    res_status = client.get("/api/ai/status")
+    assert res_status.status_code == 200
+    st = res_status.json()
+    assert st["status"] == "ready"
+    assert "sentence_composition" in st["capabilities"]
+    assert "ambiguity_resolution" in st["capabilities"]
+
+    # 2. Sentence Composition (Local offline fallback)
+    res_comp = client.post("/api/ai/compose", json={
+        "tokens": ["HELP", "WATER"],
+        "target_language": "en"
+    })
+    assert res_comp.status_code == 200
+    comp = res_comp.json()
+    assert "composed_text" in comp
+    assert "water" in comp["composed_text"].lower()
+
+    # 3. Disambiguation
+    res_disamb = client.post("/api/ai/disambiguate", json={
+        "top_candidates": [
+            {"letter": "M", "confidence": 0.72},
+            {"letter": "N", "confidence": 0.69}
+        ],
+        "context_history": ["N", "A"]
+    })
+    assert res_disamb.status_code == 200
+    disamb = res_disamb.json()
+    assert "selected_sign" in disamb
+    assert disamb["selected_sign"] in ["M", "N"]
+
+    # 4. Ergonomic Practice Coaching
+    res_coach = client.post("/api/ai/coach", json={
+        "target_sign": "A",
+        "joint_metrics": {
+            "curl_ratios": {"index": 0.2, "pinky": 0.2},
+            "joint_angles": {}
+        }
+    })
+    assert res_coach.status_code == 200
+    coach = res_coach.json()
+    assert coach["target_sign"] == "A"
+    assert "coaching_tips" in coach
+    assert len(coach["coaching_tips"]) > 0
+
+
+def test_unified_data_contract_predict_frame():
+    # Test FrameInferencePayload with mode='alphabet'
+    resp = client.post("/api/predict/frame", json={
+        "frame_id": 42,
+        "timestamp_ms": 1700000000.0,
+        "has_hands": True,
+        "hand_count": 1,
+        "handedness": "Right",
+        "raw_coordinates_63": [0.0] * 63,
+        "mode": "alphabet",
+        "confidence_threshold": 0.70
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["frame_id"] == 42
+    assert "status" in data
+    assert "predicted_sign" in data
+    assert "is_accepted" in data
+    assert "latency_ms" in data
+    assert data["feature_schema_version"] == "2.1.0-coordinate-94d"
+
+
+

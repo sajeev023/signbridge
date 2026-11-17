@@ -81,6 +81,14 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const demoIntervalRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const isProcessingFrameRef = useRef<boolean>(false);
+  const frameCounterRef = useRef<number>(0);
+  const latestCommittedFrameRef = useRef<number>(0);
+
+  // AI Sentence Composer state (Layer C)
+  const [aiComposedText, setAiComposedText] = useState<string | null>(null);
+  const [isComposingAi, setIsComposingAi] = useState<boolean>(false);
+
 
   // Load signs and history
   useEffect(() => {
@@ -132,6 +140,26 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
       setRecentTranslations(updated.slice(0, 5));
     }
   }, [autoSpeak, isMuted, selectedLanguage, lastSpokenSign, lastSpokenTime, handleSpeak]);
+
+  const handleAICompose = async () => {
+    if (recentTranslations.length === 0) return;
+    setIsComposingAi(true);
+    try {
+      const tokens = recentTranslations.map(r => r.sign_id || r.label);
+      const res = await apiClient.composeSentence(tokens, selectedLanguage);
+      if (res && res.composed_text) {
+        setAiComposedText(res.composed_text);
+        if (autoSpeak && !isMuted) {
+          handleSpeak(res.composed_text, selectedLanguage);
+        }
+      }
+    } catch {
+      // fallback
+    } finally {
+      setIsComposingAi(false);
+    }
+  };
+
 
   // -------------------------------------------------------------
   // MODE B: LIVE CAMERA PIPELINE (CLIENT VISION VIA MEDIAPIPE)
@@ -239,16 +267,46 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
               pose: null
             });
 
-            // Run real-time ISL gesture classification
-            const evalResult = ClientGestureEngine.evaluateFrame(leftHand, rightHand);
-            if (evalResult) {
-              setPrediction(evalResult);
-              if (evalResult.status === 'recognized') {
-                commitTranslation(evalResult, 'live_camera');
-              }
+            // Real-Time Neural Inference with Drop Protection and Offline Fallback
+            if (!isProcessingFrameRef.current) {
+              isProcessingFrameRef.current = true;
+              frameCounterRef.current += 1;
+              const currentFrameId = frameCounterRef.current;
+
+              apiClient.predictFrame({
+                frame_id: currentFrameId,
+                timestamp_ms: performance.now(),
+                has_hands: true,
+                hand_count: detection.landmarks.length,
+                left_hand: leftHand,
+                right_hand: rightHand,
+                mode: 'words'
+              }).then((res) => {
+                if (currentFrameId >= latestCommittedFrameRef.current) {
+                  latestCommittedFrameRef.current = currentFrameId;
+                  setPrediction(res);
+                  if (res.status === 'recognized' && res.is_accepted !== false) {
+                    commitTranslation(res, 'live_camera');
+                  }
+                }
+              }).catch(() => {
+                // Offline fallback: evaluate via client gesture engine
+                const evalResult = ClientGestureEngine.evaluateFrame(leftHand, rightHand);
+                if (evalResult) {
+                  setPrediction(evalResult);
+                  if (evalResult.status === 'recognized') {
+                    commitTranslation(evalResult, 'live_camera');
+                  }
+                }
+              }).finally(() => {
+                isProcessingFrameRef.current = false;
+              });
             }
           } else {
             setDetectedHandsCount(0);
+            if (frameCounterRef.current % 12 === 0) {
+              setPrediction((prev) => (prev && prev.status === 'recognized') ? { ...prev, status: 'idle', message: 'Waiting for hands in camera frame...' } : prev);
+            }
           }
         }
       }
@@ -826,6 +884,71 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
                 <div className="w-9 h-5 bg-navy-950 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
               </label>
             </div>
+          </div>
+
+          {/* AI Smart Sentence Composer (Layer C) */}
+          <div className="bg-navy-900 border border-brand-800/60 rounded-2xl p-4 shadow-subtle space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-brand-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                <span>AI Sentence Composer</span>
+              </span>
+              <button
+                onClick={handleAICompose}
+                disabled={recentTranslations.length === 0 || isComposingAi}
+                className="px-2.5 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-[11px] shadow-glow flex items-center gap-1 transition-all"
+              >
+                {isComposingAi ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Composing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    <span>Compose</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {aiComposedText ? (
+              <div className="p-3 bg-navy-950 border border-brand-800 rounded-xl space-y-2">
+                <p className="text-sm font-medium text-white leading-relaxed">
+                  "{aiComposedText}"
+                </p>
+                <div className="flex items-center justify-between pt-1 border-t border-navy-850">
+                  <span className="text-[10px] font-mono text-brand-400">Context-Aware Speech</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleSpeak(aiComposedText, selectedLanguage)}
+                      disabled={isMuted}
+                      className="p-1 rounded text-slate-300 hover:text-white"
+                      title="Speak composed sentence"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-brand-400" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText(aiComposedText);
+                        setCopiedText(true);
+                        setTimeout(() => setCopiedText(false), 2000);
+                      }}
+                      className="p-1 rounded text-slate-300 hover:text-white"
+                      title="Copy text"
+                    >
+                      {copiedText ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400 italic">
+                {recentTranslations.length > 0
+                  ? "Tap Compose to synthesize signs into a fluent natural sentence."
+                  : "Sign at least one gesture to activate context-aware sentence synthesis."}
+              </p>
+            )}
           </div>
 
           {/* Session Log */}
